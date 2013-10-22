@@ -1,0 +1,9 @@
+{
+  "name": "gunray",
+  "description": "A javascript templating and data-binding framework",
+  "author": "<rpmessner@gmail.com>",
+  "dependencies": {
+    "lodash": "2.2.1"
+  },
+  "engine":"node >= 0.11.7"
+}

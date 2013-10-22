@@ -1,0 +1,13 @@
+source 'https://rubygems.org/'
+
+gem 'sinatra', '~> 1.4.3'
+gem 'slim', '~> 2.0.1'
+gem 'ratpack', '~> 0.1.3'
+gem 'sprockets', '~> 2.10.0'
+gem 'sprockets-helpers', '~> 1.0.1'
+gem 'coffee-script', '~> 2.2.0'
+gem 'pry', '~> 0.9.12.2'
+gem 'sinatra-reloader', '~> 1.0'
+gem 'active_support', '~> 3.0.0'
+gem 'i18n', '~> 0.6.5'
+gem 'unicorn', '~> 4.6.3'
