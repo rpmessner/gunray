@@ -14,12 +14,12 @@ module "Gunray Object",
         name: 'gerald'
         location:
           zip: '60640'
-      # children: [
-      #   { name: 'dorothy' }
-      #   { name: 'marvin' }
-      #   { name: 'friedrich' }
-      #   { name: 'jens' }
-      # ]
+      children: [
+        { name: 'dorothy' }
+        { name: 'marvin' }
+        { name: 'friedrich' }
+        { name: 'jens' }
+      ]
     )
   teardown: -> o = null
 
@@ -88,5 +88,5 @@ test 'bindings provide access to current, previous values and the object', 4, ->
 
   o.set 'firstName', 'Fitzgerald'
 
-# test 'gets collection values', ->
-#   equal o.value('children.at(0).name'), 'dorothy'
+test 'gets collection values', ->
+  equal o.value('children.at(0).name'), 'dorothy'

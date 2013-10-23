@@ -1,6 +1,9 @@
 html = Gunray.html
-property = Gunray.property
 isHtml = Gunray.isHtml
+
+property = Gunray.property
+object = Gunray.object
+collection = Gunray.collection
 
 module "Gunray Template",
   setup:  ->
@@ -87,11 +90,11 @@ test 'boolean, number, date, regex get to-string\'ed', 1, ->
 
 test 'observable content', ->
   title = property()
-  title 'Welcome to HyperScript!'
+  title 'initial content'
   h1 = html(['h1', title])
-  equalHtml h1, '<h1>Welcome to HyperScript!</h1>'
-  title 'Leave, creep!'
-  equalHtml h1, '<h1>Leave, creep!</h1>'
+  equalHtml h1, '<h1>initial content</h1>'
+  title 'updated content'
+  equalHtml h1, '<h1>updated content</h1>'
 
 test 'observable property', ->
   checked = property()
@@ -101,50 +104,21 @@ test 'observable property', ->
   checked false
   equal checkbox.checked, false
 
-# test 'observable object property', ->
-#   obj = object(name: 'Karen')
-#   div = html(['div', obj.val("name")])
-#   equalHtml div, "<div>Karen</div>"
+test 'observable object property', ->
+  obj = object(name: 'Karen')
+  div = html(['div', obj.prop('name')])
+  equalHtml div, "<div>Karen</div>"
 
-#   obj.set('name', 'Louis')
-#   equalHtml div, "<div>Louis</div>"
+  obj.set('name', 'Louis')
+  equalHtml div, "<div>Louis</div>"
 
-# test 'observable collection', ->
-#   coll = collection([name: 'Karen'])
-#   mapUl = html(['ul',
-#               (coll.map((obj, i)->
-#                 ['li', i, obj.val("name")]) )])
-#   filterUl = html(['ul',
-#               (coll.filter(name: 'Louis', (obj, i)->
-#                 ['li', i, obj.val("name")]) )])
-#   # computedUl = html(['ul',
-#   #                   computed(coll, (obj) ->
-#   #                     ['li', 8, obj.val('name'), 'Computed'])])
-#   attributeUl = html(['ul',
-#                     coll.map((obj, i) ->
-#                       ['li', {class: "index-#{i}"}, obj.val('name')])])
-#   # forUl = html(['ul',
-#   #             ['for', ((obj, i)->
-#   #               ['li', i, obj.val("name")] )]])
-
-#   equalHtml mapUl, "<ul><li>0Karen</li></ul>"
-#   # equalHtml forUl, "<ul><li>0Karen</li></ul>"
-#   equalHtml filterUl, "<ul></ul>"
-#   # equalHtml computedUl, "<ul><li>8KarenComputed</li></ul>"
-#   equalHtml attributeUl, '<ul><li class="index-0">Karen</li></ul>'
-
-#   coll.at(0).set('name', 'Louis')
-
-#   equalHtml mapUl, "<ul><li>Louis</li></ul>"
-#   # equalHtml forUl, "<ul><li>Louis</li></ul>"
-#   equalHtml filterUl, "<ul></ul>"
-#   # equalHtml computedUl, "<ul><li>8LouisComputed</li></ul>"
-#   equalHtml attributeUl, '<ul><li class="index-0">Louis</li></ul>'
-
-#   coll.add(name: 'Keith')
-
-#   equalHtml mapUl, "<ul><li>Louis</li><li>Keith</li></ul>"
-#   # equalHtml forUl, "<ul><li>Louis</li><li>Keith</li></ul>"
-#   equalHtml filterUl, "<ul><li>Louis</li></ul>"
-#   # equalHtml computedUl, "<ul><li>8LouisComputed</li><li>8KeithComputed</li></ul>"
-#   equalHtml attributeUl, '<ul><li class="index-0">Louis</li><li class="index-1">Keith</li></ul>'
+test 'observable collection', ->
+  coll = collection([name: 'Karen'])
+  ul = html(['ul', coll.map (obj, i) ->
+              ['li', i, obj.prop("name")]
+            ])
+  equalHtml ul, "<ul><li>Karen</li></ul>"
+  coll.at(0).set('name', 'Louis')
+  equalHtml ul, "<ul><li>Louis</li></ul>"
+  coll.add(name: 'Keith')
+  equalHtml ul, "<ul><li>Louis</li><li>Keith</li></ul>"

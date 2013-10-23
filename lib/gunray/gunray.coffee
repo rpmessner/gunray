@@ -7,24 +7,23 @@
   isBlank = (val) -> _.isUndefined(val) or _.isNull(val)
 
   creator = (klass) ->
-    ->
-      klass.create.apply(new klass, arguments)
+    -> klass.create.apply(new klass, arguments)
 
   isTypeFunc = (type) ->
     (object) -> !isBlank(object) and object.__type__ is type
+
+  assert = (cond, msg) -> throw msg unless cond
 
   #- Property ----------------------------------------------
   Property = ->
   Property.create = ->
     observers = []
-    value = null
+    value = _.first(arguments)
     returnFunc = (val) ->
       switch
         when _.isFunction(val)
           observers.push(val)
-          ->
-            index = _.indexOf observers, val
-            observers.splice index, 1
+          -> _.remove observers, (x) -> x is val
         when isBlank(val)
           value
         else
@@ -69,7 +68,8 @@
     data = _.reduce input, (coll, value, key) ->
       switch
         when _.isFunction(value) then null
-        when _.isArray(value) then null
+        when _.isArray(value)
+          coll[key] = collection(value)
         when _.isObject(value)
           obj = object(value)
           coll[key] = obj
@@ -96,6 +96,9 @@
     getProperty = (path) ->
       _.reduce path.split("."), (coll, prop) ->
         switch
+          when (matches = prop.match /^at\((\d)\)$/)
+            assert isCollection(coll), "Tried to use index access on a non-collection"
+            coll.at _.last(matches)
           when _.isFunction(coll.prop)
             coll.prop(prop)
           when _.isObject(coll)
@@ -110,6 +113,8 @@
 
     _.extend @,
       __type__: Obj
+      __data__: data
+      __bindings__: bindings
       value: getValue
       val: getValue
       get: getValue
@@ -130,16 +135,21 @@
   Collection.create = ->
     arg = _.first(arguments)
 
-    throw "Invalid Argument" unless _.isArray(arg)
+    assert _.isArray(arg), "Invalid Argument"
 
     makeCollectionItem = (item) =>
-      item = object(item) unless isObject(item)
-      item.collection = => @
-      item
+      retval =
+        switch
+          when isObject(item) then item
+          when _.isObject(item) then object(item)
+          when _.isArray(item) then collection(item)
+          else  property(item)
+      retval.collection = => @
+      retval
 
     data = _.map arg, (datum) -> makeCollectionItem(datum)
 
-    bindings = []
+    bindings = _.first(_.rest(arguments)) || []
 
     bind = bindFunc(@, bindings)
     trigger = triggerFunc(@, bindings)
@@ -151,12 +161,23 @@
       data.push item
       trigger(item, 'add', item, null)
 
+    removeItem = (index) ->
+      item = atIndex(index)
+      data.splice index, 1
+      trigger(item, 'remove', item, null)
+
     atIndex = (i) -> _.first _.at(data, i)
+    each = (func) -> collection _.each(data, func)
+    map = (func) -> collection _.map(data, func), bindings
+    reduce = (memo, func) -> collection _.reduce(data, func, memo)
 
     _.extend @,
       __type__: Collection
+      __data__: data
+      __bindings__: bindings
       at: atIndex
       add: addItem
+      removeAt: removeItem
       bind: bind
       on: bind
       trigger: trigger
@@ -165,6 +186,10 @@
       length: length
       count: length
       size: length
+      each: each
+      map: map
+      inject: reduce
+      reduce: reduce
 
     @
 
@@ -175,11 +200,12 @@
   addTextNode = (node, content) ->
     textNode =
       document.createTextNode(
-        if isProperty(content)
-          content (value) ->
-            textNode.data = toString(value)
-          content()
-        else toString(content)
+        switch
+          when isProperty(content)
+            content (value) ->
+              textNode.data = toString(value)
+            content()
+          else toString(content)
       )
     node.appendChild(textNode)
 
@@ -262,11 +288,11 @@
 
   Template = ->
   Template.create = (template) ->
-    throw "Invalid Template" unless _.isArray(template)
+    assert _.isArray(template), "Invalid Template"
 
     tagName = _.first(template)
 
-    throw "Invalid Template" unless _.isString(tagName)
+    assert _.isString(tagName), "Invalid Template"
 
     [tagName, id, classes] = splitTag(tagName)
     [attributes, rest] = getAttributes(template)

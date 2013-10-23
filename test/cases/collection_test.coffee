@@ -77,30 +77,34 @@ test 'provides forEach function', 4, ->
     equal coll.at(i).val('firstName'), obj.val('firstName')
     index++
 
-# test 'provides map function', 5, ->
-#   addItem()
-#   index = 0
-#   result = coll.map (obj, i) ->
-#     equal i, index
-#     equal coll.at(i).val('firstName'), obj.val('firstName')
-#     index++
-#   deepEqual result, [0, 1]
+test 'provides map function', 6, ->
+  addItem()
+  index = 0
+  result = coll.map (obj, i) ->
+    equal i, index
+    equal coll.at(i).val('firstName'), obj.val('firstName')
+    index++
+  equal result.at(0)(), 0
+  equal result.at(1)(), 1
 
-# test 'provides reduce function', 5, ->
+test 'provides reduce function', 2, ->
+  addItem()
+  result = coll.reduce [], (coll, val) ->
+    coll.push val.get('firstName')
+    coll
+  equal result.at(0)(), 'first'
+  equal result.at(1)(), 'Charley'
 
-# test 'allows integer access', ->
-#   equal coll.at(0).val('firstName'), 'first'
+test 'allows integer access', 1, ->
+  equal coll.at(0).val('firstName'), 'first'
 
-# test 'observes collection remove'
-#   expect 4
-#   coll.on((obj, event) ->
-#     equal obj.val('firstName'), 'first'
-#     equal event, 'remove'
-#   )
-#   coll.on(remove: (obj) ->
-#     equal obj.val('firstName'), 'first'
-#   )
-#   coll.removeAt(0)
-#   equal coll.length(), 0
-
-# test 'observes collection add & remove', ->
+test 'observes collection remove', 4, ->
+  coll.on((obj, event) ->
+    equal obj.val('firstName'), 'first'
+    equal event, 'remove'
+  )
+  coll.on(remove: (obj) ->
+    equal obj.val('firstName'), 'first'
+  )
+  coll.removeAt(0)
+  equal coll.length(), 0

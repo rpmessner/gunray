@@ -15,6 +15,11 @@ test 'is created', 2, ->
   equal isProperty(p), true
   ok _.isFunction(p)
 
+test 'can be initialized with value', 2, ->
+  initializedProp = property("foo")
+  equal isProperty(initializedProp), true
+  equal initializedProp(), "foo"
+
 test 'can be updated', 2, ->
   p(r1)
   p2(r2)
