@@ -8,7 +8,7 @@ module "Gunray Property",
      updated = 0
      p = prop()
      p2 = prop()
-     [r1, r2, r3]  = _.times 3, Math.random
+     [r1, r2]  = _.times 2, Math.random
    teardown: ->
 
 test 'is created', 2, ->
@@ -16,7 +16,7 @@ test 'is created', 2, ->
   ok _.isFunction(p)
 
 test 'can be initialized with value', 2, ->
-  initializedProp = property("foo")
+  initializedProp = prop("foo")
   equal isProperty(initializedProp), true
   equal initializedProp(), "foo"
 
@@ -26,36 +26,23 @@ test 'can be updated', 2, ->
   equal p(), r1
   equal p2(), r2
 
-test 'notifies observers', 13, ->
-  listener = (val) ->
-    updated++
-    equal val, r1 if updated is 1
-    equal val, r3 if updated is 2
+test 'binds observers', 2, ->
+  p (val) ->
+    equal val, r1
     ok true
 
-  listener2 = (val) ->
-    ok false
-
-  p2(listener2)
-
-  remove = p(listener)
-
-  equal 'function', typeof remove
-  equal updated, 0
+  p2 (val) -> ok false
 
   p(r1)
-  equal updated, 1
 
-  remove()
-  p(r2)
-  equal p(), r2
-  equal updated, 1
+test 'removes bindings', 2, ->
+  p (val) ->
+    equal val, r1
+    ok true
 
-  equal updated, 1
-  equal p(), r2
+  unbind = p2 (val) -> ok false
 
-  p(listener)
-  p(r3)
+  unbind()
 
-  equal updated, 2
-  equal p(), r3
+  p(r1)
+  p2(r2)

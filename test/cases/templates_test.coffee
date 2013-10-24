@@ -17,33 +17,33 @@ test 'creates template', 3, ->
 
 test 'simple', 4, ->
   h1 = html(['h1'])
-  equal h1.children().length, 0
+  equal h1.children.length, 0
   equalHtml h1, '<h1></h1>'
   h1hello = html(['h1', 'hello world'])
-  equal h1hello.children().length, 0
+  equal h1hello.children.length, 0
   equalHtml h1hello, '<h1>hello world</h1>'
 
 test 'nested', 4, ->
   div = html(['div',
-        ['h1', 'Title'],
-        ['p', 'Paragraph']])
-  equal div.children().length, 2
+          ['h1', 'Title'],
+          ['p', 'Paragraph']])
+  equal div.children.length, 2
   equalHtml div, '<div><h1>Title</h1><p>Paragraph</p></div>'
 
   div2 = html(['div',
-        ['h1', 'Title'],
-        ['p', 'Paragraph', ['span', 'Words']]])
-  equal _.last(div2.children()).children().length, 1
+           ['h1', 'Title'],
+           ['p', 'Paragraph', ['span', 'Words']]])
+  equal _.last(div2.children).children.length, 1
   equalHtml div2, '<div><h1>Title</h1><p>Paragraph<span>Words</span></p></div>'
 
 test 'arrays for nesting is ok', 4, ->
   template = html(['div', [['h1', 'Title'], ['p', 'Paragraph']]])
   equalHtml template, '<div><h1>Title</h1><p>Paragraph</p></div>'
-  equal template.children().length, 2
+  equal template.children.length, 2
 
   template = html(['div', [['h1', 'Title']], ['p', 'Paragraph']])
   equalHtml template, '<div><h1>Title</h1><p>Paragraph</p></div>'
-  equal template.children().length, 2
+  equal template.children.length, 2
 
 test 'can use id selector', 1, ->
   equalHtml html(['div#frame']), '<div id="frame"></div>'
@@ -114,7 +114,7 @@ test 'observable object property', ->
 
 test 'observable collection', ->
   coll = collection([name: 'Karen'])
-  ul = html(['ul', coll.map (obj, i) ->
+  ul = html(['ul', coll.mapHtml (obj, i) ->
               ['li', i, obj.prop("name")]
             ])
   equalHtml ul, "<ul><li>Karen</li></ul>"

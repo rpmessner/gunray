@@ -17,18 +17,18 @@
   #- Property ----------------------------------------------
   Property = ->
   Property.create = ->
-    observers = []
+    bindings = []
     value = _.first(arguments)
     returnFunc = (val) ->
       switch
         when _.isFunction(val)
-          observers.push(val)
-          -> _.remove observers, (x) -> x is val
+          bindings.push(val)
+          -> _.remove bindings, (x) -> x is val
         when isBlank(val)
           value
         else
           value = val
-          _.each observers, (obs) -> obs(value)
+          _.each bindings, (obs) -> obs(value)
           value
 
     _.extend returnFunc,
@@ -43,19 +43,25 @@
   bindFunc = (self, bindings) ->
     ->
       first = _.first(arguments)
+      bound = []
       switch
-        when _.isFunction(first) then bindings.push(event: 'all', callback: first)
+        when _.isFunction(first)
+          bindings.push(event: 'all', callback: first)
+          bound.push _.last(bindings)
         when _.isObject(first)
           _.each first, (func, event) ->
             [event, prop] = event.split(":")
             bindings.push(event: event, callback: func, property: prop)
+            bound.push _.last(bindings)
+      -> _.remove bindings, (x) -> _.include bound, x
 
   triggerFunc = (self, bindings) ->
     (item, event, value, previous) ->
       _.each bindings, (binding) ->
         if binding.event is event or binding.event is 'all'
           unless isBlank(binding.property)
-            binding.callback(item.get(binding.property), item, event, previous) unless isBlank(item.prop(binding.property))
+            unless isBlank(item.prop(binding.property))
+              binding.callback(item.get(binding.property), item, event, previous)
           else
             binding.callback(item, event)
       if isObject(self) and _.isFunction(self.collection) and isCollection(self.collection())
@@ -81,14 +87,18 @@
 
     setValue = ->
       [path, value] = arguments
+      set = (attribute, value) =>
+        prop = getProperty(attribute)
+        previous = prop()
+        return if previous is value
+        prop(value)
+        trigger(@, 'update', value, previous)
       switch
         when _.isString path
-          prop = getProperty(path)
-          previous = prop()
-          return if previous is value
-          prop(value)
-          trigger(@, 'update', value, previous)
-        when _.isObject key then null
+          set(path, value)
+        when _.isObject path
+          _.each path, (value, key) ->
+            set(key, value)
 
     getValue = (key) ->
       getProperty(key)()
@@ -115,15 +125,11 @@
       __type__: Obj
       __data__: data
       __bindings__: bindings
-      value: getValue
-      val: getValue
       get: getValue
       set: setValue
       trigger: trigger
-      property: getProperty
       prop: getProperty
       bind: bind
-      on: bind
 
     @
 
@@ -137,22 +143,27 @@
 
     assert _.isArray(arg), "Invalid Argument"
 
+    identity = property(@)
+
     makeCollectionItem = (item) =>
       retval =
         switch
           when isObject(item) then item
+          when isHtml(item) then item
           when _.isObject(item) then object(item)
           when _.isArray(item) then collection(item)
           else  property(item)
-      retval.collection = => @
+      retval.collection = identity
       retval
 
     data = _.map arg, (datum) -> makeCollectionItem(datum)
 
-    bindings = _.first(_.rest(arguments)) || []
+    options = _.first(_.rest(arguments)) || {}
+    bindings =  options.bindings || []
 
     bind = bindFunc(@, bindings)
     trigger = triggerFunc(@, bindings)
+    iterator = options.iterator || identity
 
     length = -> data.length
 
@@ -161,14 +172,17 @@
       data.push item
       trigger(item, 'add', item, null)
 
-    removeItem = (index) ->
+    removeIndex = (index) ->
       item = atIndex(index)
       data.splice index, 1
       trigger(item, 'remove', item, null)
 
+    removeItem = (item) -> removeIndex _.indexOf(data, item)
+
     atIndex = (i) -> _.first _.at(data, i)
     each = (func) -> collection _.each(data, func)
-    map = (func) -> collection _.map(data, func), bindings
+    map = (func) -> collection _.map(data, func), bindings: bindings, iterator: func
+    mapHtml = (func) -> map (item) -> html(func(item))
     reduce = (memo, func) -> collection _.reduce(data, func, memo)
 
     _.extend @,
@@ -177,17 +191,20 @@
       __bindings__: bindings
       at: atIndex
       add: addItem
-      removeAt: removeItem
+      remove: removeItem
+      removeAt: removeIndex
       bind: bind
-      on: bind
+      iterator: iterator
       trigger: trigger
       first: -> _.first(data)
       rest: -> _.rest(data)
+      last: -> _.last(data)
       length: length
       count: length
       size: length
       each: each
       map: map
+      mapHtml: mapHtml
       inject: reduce
       reduce: reduce
 
@@ -197,7 +214,13 @@
   isCollection = isColl = isTypeFunc(Collection)
 
   #- Template ----------------------------------------------
-  addTextNode = (node, content) ->
+  removeChildDom = (node, child) ->
+    -> node.removeChild(child)
+
+  removeChild = (children, child) ->
+    -> children.slice _.indexOf(children, child), 1
+
+  addTextNode = (node, content, collection) ->
     textNode =
       document.createTextNode(
         switch
@@ -207,19 +230,47 @@
             content()
           else toString(content)
       )
+    childRemove = removeChild(node, textNode)
+    unbind = collection.bind(
+      remove: ->
+        childRemove()
+        unbind()
+    ) unless isBlank collection
     node.appendChild(textNode)
 
-  applyRest = (node, rest) ->
+  addChildNode = (node, content, collection) ->
+    child = html(content)
+    addChildTemplate.call(@, node, child, collection)
+
+  addChildTemplate = (node, child, collection) ->
+    @children.push(child)
+    domRemove = removeChildDom(node, child.dom)
+    childRemove = removeChild(@children, child)
+    unbind = collection.bind(
+      remove: ->
+        domRemove()
+        childRemove()
+        unbind()
+    ) unless isBlank collection
+    node.appendChild child.dom
+
+  applyRest = (node, rest, collection) ->
     _.each rest, (arg) =>
       switch
+        when isHtml(arg)
+          addChildTemplate.call(@, node, arg, collection)
+        when isCollection(arg)
+          applyItem = (itemFunc) =>
+            (item) => applyRest.call(@, node, [itemFunc(item)], arg)
+          arg.bind(add: applyItem(arg.iterator))
+          arg.each applyItem((item) -> item)
+
         when isBlank(arg) then null
         when _.isArray(arg) and _.isArray(_.first(arg))
           applyRest.call(@, node, arg)
         when _.isArray(arg) and _.isString(_.first(arg))
-          child = html(arg)
-          @children().push child
-          node.appendChild child.dom
-        else addTextNode(node, arg)
+          addChildNode.call(@, node, arg, collection)
+        else addTextNode(node, arg, collection)
 
   tagSplitter = /([^\s\.\#]+)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/
 
@@ -281,7 +332,7 @@
   getAttributes = (template) ->
     rest = _.rest(template)
     next = _.first(rest)
-    if _.isObject(next) and !_.isArray(next) and !_.isFunction(next)
+    if _.isObject(next) and !_.isArray(next) and !_.isFunction(next) and !isCollection(next)
       [next, _.rest(rest)]
     else
       [{}, rest]
@@ -303,7 +354,7 @@
     _.extend @,
       __type__: Template
       dom: node
-      children: -> children
+      children: children
 
     applyAttributes.call(@, node, id, classes, attributes)
     applyRest.call(@, node, rest)

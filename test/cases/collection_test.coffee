@@ -29,7 +29,7 @@ test 'first and rest', 2, ->
 
 test 'observes collection', 3, ->
   coll.bind (obj, event) ->
-    equal obj.val('firstName'), 'Charley'
+    equal obj.get('firstName'), 'Charley'
     equal event, 'add'
 
   addItem()
@@ -37,19 +37,24 @@ test 'observes collection', 3, ->
   equal coll.size(), 2
 
 test 'observes collection event', 2, ->
-  coll.bind add: (obj) ->
-    equal obj.val('firstName'), 'Charley'
-
-  coll.bind remove: -> ok false
-
+  coll.bind(add: (obj) ->
+    equal obj.get('firstName'), 'Charley'
+  )
+  coll.bind(remove: -> ok false)
   addItem()
 
   equal coll.size(), 2
 
+test 'removes collection binding', 1, ->
+  unbind = coll.bind -> ok true
+  coll.add firstName: 'foo', lastName: 'bar'
+  unbind()
+  coll.add firstName: 'fizz', lastName: 'buzz'
+
 test 'observes collection property event', 3, ->
   coll.bind 'add:firstName': (name, obj) ->
     equal name, 'Charley'
-    equal obj.val('lastName'), 'Patton'
+    equal obj.get('lastName'), 'Patton'
 
   coll.bind 'add:notAProperty': -> ok false
 
@@ -65,7 +70,7 @@ test 'observes collection change', 4, ->
   coll.bind('update:firstName': (name, obj, event, previous) ->
     equal name, 'George'
     equal event, 'update'
-    equal obj.val('firstName'), 'George'
+    equal obj.get('firstName'), 'George'
     equal previous, 'first', 'Charley')
   coll.at(0).set('firstName', 'George')
 
@@ -74,7 +79,7 @@ test 'provides forEach function', 4, ->
   index = 0
   coll.each (obj, i) ->
     equal i, index
-    equal coll.at(i).val('firstName'), obj.val('firstName')
+    equal coll.at(i).get('firstName'), obj.get('firstName')
     index++
 
 test 'provides map function', 6, ->
@@ -82,7 +87,7 @@ test 'provides map function', 6, ->
   index = 0
   result = coll.map (obj, i) ->
     equal i, index
-    equal coll.at(i).val('firstName'), obj.val('firstName')
+    equal coll.at(i).get('firstName'), obj.get('firstName')
     index++
   equal result.at(0)(), 0
   equal result.at(1)(), 1
@@ -96,15 +101,22 @@ test 'provides reduce function', 2, ->
   equal result.at(1)(), 'Charley'
 
 test 'allows integer access', 1, ->
-  equal coll.at(0).val('firstName'), 'first'
+  equal coll.at(0).get('firstName'), 'first'
 
-test 'observes collection remove', 4, ->
-  coll.on((obj, event) ->
-    equal obj.val('firstName'), 'first'
-    equal event, 'remove'
-  )
-  coll.on(remove: (obj) ->
-    equal obj.val('firstName'), 'first'
-  )
+test 'removes by index', 1, ->
   coll.removeAt(0)
   equal coll.length(), 0
+
+test 'removes by identity', 1, ->
+  coll.remove(coll.at(0))
+  equal coll.length(), 0
+
+test 'observes collection remove', 3, ->
+  coll.bind((obj, event) ->
+    equal obj.get('firstName'), 'first'
+    equal event, 'remove'
+  )
+  coll.bind(remove: (obj) ->
+    equal obj.get('firstName'), 'first'
+  )
+  coll.removeAt(0)
