@@ -122,3 +122,7 @@ test 'observable collection', ->
   equalHtml ul, "<ul><li>Louis</li></ul>"
   coll.add(name: 'Keith')
   equalHtml ul, "<ul><li>Louis</li><li>Keith</li></ul>"
+  coll.add(name: 'Richard')
+  equalHtml ul, "<ul><li>Louis</li><li>Keith</li><li>Richard</li></ul>"
+  coll.removeAt(1)
+  equalHtml ul, "<ul><li>Louis</li><li>Richard</li></ul>"

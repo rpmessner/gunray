@@ -57,7 +57,7 @@
 
   triggerFunc = (self, bindings) ->
     (item, event, value, previous) ->
-      _.each bindings, (binding) ->
+      _.each _.clone(bindings), (binding) ->
         if binding.event is event or binding.event is 'all'
           unless isBlank(binding.property)
             unless isBlank(item.prop(binding.property))
@@ -182,7 +182,8 @@
     atIndex = (i) -> _.first _.at(data, i)
     each = (func) -> collection _.each(data, func)
     map = (func) -> collection _.map(data, func), bindings: bindings, iterator: func
-    mapHtml = (func) -> map (item) -> html(func(item))
+    mapHtml = (func) ->
+      map (item) -> html(func(item), collectionItem: item)
     reduce = (memo, func) -> collection _.reduce(data, func, memo)
 
     _.extend @,
@@ -231,11 +232,11 @@
           else toString(content)
       )
     childRemove = removeChild(node, textNode)
-    unbind = collection.bind(
-      remove: ->
-        childRemove()
-        unbind()
-    ) unless isBlank collection
+    # unbind = collection.bind(
+    #   remove: (item) ->
+    #     childRemove()
+    #     unbind()
+    # ) unless isBlank collection
     node.appendChild(textNode)
 
   addChildNode = (node, content, collection) ->
@@ -247,10 +248,11 @@
     domRemove = removeChildDom(node, child.dom)
     childRemove = removeChild(@children, child)
     unbind = collection.bind(
-      remove: ->
-        domRemove()
-        childRemove()
-        unbind()
+      remove: (item) ->
+        if item is child.collectionItem
+          domRemove()
+          childRemove()
+          unbind()
     ) unless isBlank collection
     node.appendChild child.dom
 
@@ -338,7 +340,9 @@
       [{}, rest]
 
   Template = ->
-  Template.create = (template) ->
+  Template.create = (template, options) ->
+    options = options || {}
+
     assert _.isArray(template), "Invalid Template"
 
     tagName = _.first(template)
@@ -349,12 +353,15 @@
     [attributes, rest] = getAttributes(template)
 
     children = []
+
+    collectionItem = options.collectionItem
     node = document.createElement(tagName)
 
     _.extend @,
       __type__: Template
       dom: node
       children: children
+      collectionItem: collectionItem
 
     applyAttributes.call(@, node, id, classes, attributes)
     applyRest.call(@, node, rest)
