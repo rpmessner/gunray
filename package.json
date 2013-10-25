@@ -2,8 +2,17 @@
   "name": "gunray",
   "description": "A javascript templating and data-binding framework",
   "author": "<rpmessner@gmail.com>",
+  "version": "0.0.1",
   "dependencies": {
     "lodash": "2.2.1"
   },
-  "engine":"node >= 0.11.7"
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-coffeelint": "~0.0.7",
+    "grunt-contrib-coffee": "~0.7.0",
+    "grunt-contrib-qunit": "~0.3.0",
+    "grunt-contrib-uglify": "~0.2.4",
+    "grunt-contrib-watch": "~0.5.3"
+  },
+  "engine":"node >= 0.10.21"
 }

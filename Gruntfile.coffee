@@ -4,28 +4,30 @@ module.exports = (grunt) ->
     coffee:
       compile:
         files:
-          'lib/gunray/gunray.js': 'lib/gunray/gunray.coffee'
-    # concat:
-    #   options:
-    #     separator: ';'
-    #   dist:
-    #     src: ['lib/**/*.coffee']
+          'dist/gunray.js': 'lib/gunray/gunray.coffee'
+          'test/cases.js': ['test/helpers.coffee', 'test/cases/*.coffee']
+      glob_to_multiple:
+        expand: true,
+        flatten: true,
+        cwd: 'test/cases',
+        src: ['*.coffee'],
+        dest: 'test/build/cases/',
+        ext: '.js'
     coffeelint:
       app: ['lib/**/*.coffee']
       tests:
         files:
           src: ['test/cases/*.coffee']
     qunit:
-      files: ['test.html']
+      files: ['index.html']
     watch:
-      files: ['<%= coffeelint.files.src %>', '<%= coffeelint.app %>']
+      files: ['<%= coffeelint.tests.files.src %>', '<%= coffeelint.app %>']
       tasks: ['coffeelint', 'qunit']
+
   grunt.loadNpmTasks('grunt-contrib-coffee')
   grunt.loadNpmTasks('grunt-contrib-uglify')
   grunt.loadNpmTasks('grunt-coffeelint')
   grunt.loadNpmTasks('grunt-contrib-qunit')
   grunt.loadNpmTasks('grunt-contrib-watch')
-  # grunt.loadNpmTasks('grunt-contrib-concat')
 
-  grunt.registerTask('test', ['coffeelint', 'qunit'])
-  grunt.registerTask('default', ['coffeelint', 'qunit', 'concat', 'uglify'])
+  grunt.registerTask('default', ['coffeelint', 'coffee', 'qunit'])

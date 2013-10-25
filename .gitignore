@@ -16,3 +16,7 @@ tags
 .gemtags
 .tags*
 vendor/bundle
+test/build/
+test/cases.js
+test/cases/*.js
+node_modules/

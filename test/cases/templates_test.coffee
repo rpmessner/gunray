@@ -86,7 +86,9 @@ test 'sets data attributes', 1, ->
 
 test 'boolean, number, date, regex get to-string\'ed', 1, ->
   e = html(['p', true, false, 4, new Date('Mon Jan 15 2001'), /hello/]).dom
-  ok e.outerHTML.match("<p>truefalse4Mon Jan 15 2001 00:00:00 [0-9A-Z- ()]+/hello/")
+  ok e.outerHTML.match(
+    "<p>truefalse4Mon Jan 15 2001 00:00:00 [0-9A-Z- ()]+/hello/"
+  )
 
 test 'observable content', ->
   title = property()

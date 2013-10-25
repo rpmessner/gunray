@@ -6,10 +6,10 @@
 #   setup:  ->
 #   teardown: ->
 
-# test 'router'  
+# test 'router', ->
 #   coll = collection([{id: 1, name: 'Betty', category: 'Foo'},
 #                      {id: 2, name: 'Dan', category: 'Foo'}])
-#   router [route("/:slug/:id", 
-#             slug: [coll, 'name'], 
-#             id: [posts, 'id'], (dmodel 
+#   router [route("/:slug/:id",
+#             slug: [coll, 'name'],
+#             id: [posts, 'id'], (dmodel
 #           route("/:id", ]

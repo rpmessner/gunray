@@ -61,11 +61,20 @@
         if binding.event is event or binding.event is 'all'
           unless isBlank(binding.property)
             unless isBlank(item.prop(binding.property))
-              binding.callback(item.get(binding.property), item, event, previous)
+              binding.callback(
+                item.get(binding.property), item, event, previous
+              )
           else
             binding.callback(item, event)
-      if isObject(self) and _.isFunction(self.collection) and isCollection(self.collection())
-        self.collection().trigger(item, event, value, previous)
+      triggerUpstream.apply(self, arguments)
+
+  triggerUpstream = ->
+    @collection().trigger.apply(@, arguments) if hasUpstream.call(@)
+
+  hasUpstream = ->
+    isObject(@) and
+    _.isFunction(@collection) and
+    isCollection(@collection())
 
   #- Object ------------------------------------------------
   Obj = ->
@@ -107,7 +116,10 @@
       _.reduce path.split("."), (coll, prop) ->
         switch
           when (matches = prop.match /^at\((\d)\)$/)
-            assert isCollection(coll), "Tried to use index access on a non-collection"
+            assert(
+              isCollection(coll),
+              "Tried to use index access on a non-collection"
+            )
             coll.at _.last(matches)
           when _.isFunction(coll.prop)
             coll.prop(prop)
@@ -148,10 +160,10 @@
     makeCollectionItem = (item) =>
       retval =
         switch
-          when isObject(item) then item
-          when isHtml(item) then item
+          when isObject(item)   then item
+          when isHtml(item)     then item
           when _.isObject(item) then object(item)
-          when _.isArray(item) then collection(item)
+          when _.isArray(item)  then collection(item)
           else  property(item)
       retval.collection = identity
       retval
@@ -181,9 +193,13 @@
 
     atIndex = (i) -> _.first _.at(data, i)
     each = (func) -> collection _.each(data, func)
-    map = (func) -> collection _.map(data, func), bindings: bindings, iterator: func
+
+    map = (func) ->
+      collection _.map(data, func), bindings: bindings, iterator: func
+
     mapHtml = (func) ->
-      map (item) -> html(func(item), collectionItem: item)
+      map (item) -> html(func(item), item: item)
+
     reduce = (memo, func) -> collection _.reduce(data, func, memo)
 
     _.extend @,
@@ -249,7 +265,7 @@
     childRemove = removeChild(@children, child)
     unbind = collection.bind(
       remove: (item) ->
-        if item is child.collectionItem
+        if item is child.__context__
           domRemove()
           childRemove()
           unbind()
@@ -266,7 +282,6 @@
             (item) => applyRest.call(@, node, [itemFunc(item)], arg)
           arg.bind(add: applyItem(arg.iterator))
           arg.each applyItem((item) -> item)
-
         when isBlank(arg) then null
         when _.isArray(arg) and _.isArray(_.first(arg))
           applyRest.call(@, node, arg)
@@ -334,10 +349,16 @@
   getAttributes = (template) ->
     rest = _.rest(template)
     next = _.first(rest)
-    if _.isObject(next) and !_.isArray(next) and !_.isFunction(next) and !isCollection(next)
+    if isAttributes(next)
       [next, _.rest(rest)]
     else
       [{}, rest]
+
+  isAttributes = (arg) ->
+    _.isObject(arg) and
+    !_.isArray(arg) and
+    !_.isFunction(arg) and
+    !isCollection(arg)
 
   Template = ->
   Template.create = (template, options) ->
@@ -354,14 +375,14 @@
 
     children = []
 
-    collectionItem = options.collectionItem
+    item = options.item
     node = document.createElement(tagName)
 
     _.extend @,
       __type__: Template
+      __context__: item
       dom: node
       children: children
-      collectionItem: collectionItem
 
     applyAttributes.call(@, node, id, classes, attributes)
     applyRest.call(@, node, rest)
