@@ -22,7 +22,7 @@ module.exports = (grunt) ->
       files: ['index.html']
     watch:
       files: ['<%= coffeelint.tests.files.src %>', '<%= coffeelint.app %>']
-      tasks: ['coffeelint', 'qunit']
+      tasks: ['coffeelint', 'coffee', 'qunit']
 
   grunt.loadNpmTasks('grunt-contrib-coffee')
   grunt.loadNpmTasks('grunt-contrib-uglify')
