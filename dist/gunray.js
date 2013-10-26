@@ -99,16 +99,16 @@
             }
           }
         });
-        return triggerUpstream.apply(self, arguments);
+        return triggerUpstream(self, arguments);
       };
     };
-    triggerUpstream = function() {
-      if (hasUpstream.call(this)) {
-        return this.collection().trigger.apply(this, arguments);
+    triggerUpstream = function(item, args) {
+      if (hasUpstream(item)) {
+        return item.collection().trigger.apply(item, args);
       }
     };
-    hasUpstream = function() {
-      return isObject(this) && _.isFunction(this.collection) && isCollection(this.collection());
+    hasUpstream = function(item) {
+      return isObject(item) && _.isFunction(item.collection) && isCollection(item.collection());
     };
     Obj = function() {};
     Obj.create = function() {
@@ -199,7 +199,7 @@
       arg = _.first(arguments);
       assert(_.isArray(arg), "Invalid Argument");
       identity = property(this);
-      makeCollectionItem = function(item) {
+      makeCollectionItem = function(item, index) {
         var retval;
         retval = (function() {
           switch (false) {
@@ -215,12 +215,11 @@
               return property(item);
           }
         })();
+        retval.index = property(index);
         retval.collection = identity;
         return retval;
       };
-      data = _.map(arg, function(datum) {
-        return makeCollectionItem(datum);
-      });
+      data = _.map(arg, makeCollectionItem);
       options = _.first(_.rest(arguments)) || {};
       bindings = options.bindings || [];
       bind = bindFunc(this, bindings);
@@ -230,7 +229,7 @@
         return data.length;
       };
       addItem = function(item) {
-        item = makeCollectionItem(item);
+        item = makeCollectionItem(item, data.length);
         data.push(item);
         return trigger(item, 'add', item, null);
       };
@@ -238,6 +237,9 @@
         var item;
         item = atIndex(index);
         data.splice(index, 1);
+        _.each(data, function(item) {
+          return item.index(_.indexOf(data, item));
+        });
         return trigger(item, 'remove', item, null);
       };
       removeItem = function(item) {

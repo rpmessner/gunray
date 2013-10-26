@@ -23,9 +23,21 @@ test 'provides length', 3, ->
   equal coll.count(), 1
   equal coll.length(), 1
 
+test 'add items', ->
+  addItem()
+  equal coll.length(), 2
+
 test 'first and rest', 2, ->
   equal coll.first().get('firstName'), 'first'
   deepEqual coll.rest(), []
+
+test 'last', 1, ->
+  deepEqual coll.first(), coll.last()
+
+test 'add items updates index', 2, ->
+  addItem()
+  equal coll.first().index(), 0
+  equal coll.last().index(), 1
 
 test 'observes collection', 3, ->
   coll.bind (obj, event) ->
@@ -66,6 +78,11 @@ test 'allows index access', 1, ->
   first = coll.at(0)
   equal first.get("firstName"), 'first'
 
+test 'provides item indices', 2, ->
+  addItem()
+  equal coll.at(0).index(), 0
+  equal coll.at(1).index(), 1
+
 test 'observes collection change', 4, ->
   coll.bind('update:firstName': (name, obj, event, previous) ->
     equal name, 'George'
@@ -103,9 +120,12 @@ test 'provides reduce function', 2, ->
 test 'allows integer access', 1, ->
   equal coll.at(0).get('firstName'), 'first'
 
-test 'removes by index', 1, ->
+test 'removes by index', 3, ->
+  addItem()
+  equal coll.length(), 2
   coll.removeAt(0)
-  equal coll.length(), 0
+  equal coll.length(), 1
+  equal coll.at(0).index(), 0
 
 test 'removes by identity', 1, ->
   coll.remove(coll.at(0))

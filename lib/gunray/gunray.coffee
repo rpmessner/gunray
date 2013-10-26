@@ -66,15 +66,16 @@
               )
           else
             binding.callback(item, event)
-      triggerUpstream.apply(self, arguments)
+      triggerUpstream(self, arguments)
 
-  triggerUpstream = ->
-    @collection().trigger.apply(@, arguments) if hasUpstream.call(@)
+  triggerUpstream = (item, args) ->
+    if hasUpstream(item)
+      item.collection().trigger.apply(item, args)
 
-  hasUpstream = ->
-    isObject(@) and
-    _.isFunction(@collection) and
-    isCollection(@collection())
+  hasUpstream = (item) ->
+    isObject(item) and
+    _.isFunction(item.collection) and
+    isCollection(item.collection())
 
   #- Object ------------------------------------------------
   Obj = ->
@@ -157,7 +158,7 @@
 
     identity = property(@)
 
-    makeCollectionItem = (item) =>
+    makeCollectionItem = (item, index) =>
       retval =
         switch
           when isObject(item)   then item
@@ -165,10 +166,11 @@
           when _.isObject(item) then object(item)
           when _.isArray(item)  then collection(item)
           else  property(item)
+      retval.index = property(index)
       retval.collection = identity
       retval
 
-    data = _.map arg, (datum) -> makeCollectionItem(datum)
+    data = _.map arg, makeCollectionItem
 
     options = _.first(_.rest(arguments)) || {}
     bindings =  options.bindings || []
@@ -180,13 +182,15 @@
     length = -> data.length
 
     addItem = (item) ->
-      item = makeCollectionItem(item)
+      item = makeCollectionItem(item, data.length)
       data.push item
       trigger(item, 'add', item, null)
 
     removeIndex = (index) ->
       item = atIndex(index)
       data.splice index, 1
+      _.each data, (item) ->
+        item.index _.indexOf(data, item)
       trigger(item, 'remove', item, null)
 
     removeItem = (item) -> removeIndex _.indexOf(data, item)

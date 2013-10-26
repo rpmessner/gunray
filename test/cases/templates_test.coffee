@@ -116,15 +116,15 @@ test 'observable object property', ->
 
 test 'observable collection', ->
   coll = collection([name: 'Karen'])
-  ul = html(['ul', coll.mapHtml (obj, i) ->
-              ['li', i, obj.prop("name")]
+  ul = html(['ul', coll.mapHtml (obj) ->
+              ['li', obj.index, obj.prop("name")]
             ])
-  equalHtml ul, "<ul><li>Karen</li></ul>"
+  equalHtml ul, "<ul><li>0Karen</li></ul>"
   coll.at(0).set('name', 'Louis')
-  equalHtml ul, "<ul><li>Louis</li></ul>"
+  equalHtml ul, "<ul><li>0Louis</li></ul>"
   coll.add(name: 'Keith')
-  equalHtml ul, "<ul><li>Louis</li><li>Keith</li></ul>"
+  equalHtml ul, "<ul><li>0Louis</li><li>1Keith</li></ul>"
   coll.add(name: 'Richard')
-  equalHtml ul, "<ul><li>Louis</li><li>Keith</li><li>Richard</li></ul>"
+  equalHtml ul, "<ul><li>0Louis</li><li>1Keith</li><li>2Richard</li></ul>"
   coll.removeAt(1)
-  equalHtml ul, "<ul><li>Louis</li><li>Richard</li></ul>"
+  equalHtml ul, "<ul><li>0Louis</li><li>1Richard</li></ul>"
