@@ -1,6 +1,6 @@
 (function() {
   (function(global, _) {
-    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle;
+    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle, updateTextNode;
     Gunray = {};
     toString = function(x) {
       return "" + x;
@@ -346,6 +346,44 @@
     };
     computed = creator(Computed);
     isComputed = isTypeFunc(Computed);
+    updateClassName = function(node, __, classes) {
+      return node.className = classes.join(" ");
+    };
+    updateAttribute = function(node, name, attr) {
+      var checked;
+      switch (name) {
+        case 'checked':
+          checked = !!attr;
+          if (checked) {
+            node.setAttribute(name, attr);
+          } else {
+            node.removeAttribute(name);
+          }
+          return node.checked = checked;
+        default:
+          return node.setAttribute(name, attr);
+      }
+    };
+    updateStyle = function(node, property, style) {
+      return node.style.setProperty(property, style);
+    };
+    updateTextNode = function(node, __, value) {
+      return node.data = toString(value);
+    };
+    updateItem = function(node, name, prop, updateFunc) {
+      return updateFunc(node, name, isProperty(prop) || isComputed(prop) ? (prop(_.curry(updateFunc)(node, name)), prop()) : prop);
+    };
+    addTextNode = function(node, content) {
+      var textNode;
+      textNode = document.createTextNode();
+      node.appendChild(textNode);
+      return updateItem(textNode, 'data', content, updateTextNode);
+    };
+    addChildNode = function(node, content, coll) {
+      var child;
+      child = html(content);
+      return addChildTemplate.call(this, node, child, coll);
+    };
     removeChildDom = function(node, child) {
       return function() {
         return node.removeChild(child);
@@ -355,27 +393,6 @@
       return function() {
         return children.slice(_.indexOf(children, child), 1);
       };
-    };
-    addTextNode = function(node, content, coll) {
-      var childRemove, textNode;
-      textNode = document.createTextNode((function() {
-        switch (false) {
-          case !(isProperty(content) || isComputed(content)):
-            content(function(value) {
-              return textNode.data = toString(value);
-            });
-            return content();
-          default:
-            return toString(content);
-        }
-      })());
-      childRemove = removeChild(this.children, content);
-      return node.appendChild(textNode);
-    };
-    addChildNode = function(node, content, coll) {
-      var child;
-      child = html(content);
-      return addChildTemplate.call(this, node, child, coll);
     };
     addChildTemplate = function(node, child, coll) {
       var childRemove, domRemove, unbind;
@@ -419,7 +436,7 @@
           case !_.isArray(arg):
             return addChildNode.call(_this, node, arg, coll);
           default:
-            return addTextNode.call(_this, node, arg, coll);
+            return addTextNode.call(_this, node, arg);
         }
       });
     };
@@ -430,30 +447,6 @@
       return [tagName || 'div', id, (classnames ? classnames.split(".") : void 0)];
     };
     events = ("click focus blur dblclick change mousedown mousemove mouseout " + "mouseover mouseup resize scroll select submit load unload").split(" ");
-    updateClassName = function(node, __, classes) {
-      return node.className = classes.join(" ");
-    };
-    updateAttribute = function(node, name, attr) {
-      var checked;
-      switch (name) {
-        case 'checked':
-          checked = !!attr;
-          if (checked) {
-            node.setAttribute(name, attr);
-          } else {
-            node.removeAttribute(name);
-          }
-          return node.checked = checked;
-        default:
-          return node.setAttribute(name, attr);
-      }
-    };
-    updateStyle = function(node, property, style) {
-      return node.style.setProperty(property, style);
-    };
-    updateItem = function(node, name, prop, updateFunc) {
-      return updateFunc(node, name, isProperty(prop) || isComputed(prop) ? (prop(_.curry(updateFunc)(node, name)), prop()) : prop);
-    };
     applyAttributes = function(node, id, classes, attributes) {
       var classname;
       if (id) {

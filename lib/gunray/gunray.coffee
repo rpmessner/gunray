@@ -267,28 +267,47 @@
   isComputed = isTypeFunc(Computed)
 
   #- Template ----------------------------------------------
+  updateClassName = (node, __, classes) ->
+    node.className = classes.join(" ")
+
+  updateAttribute = (node, name, attr) ->
+    switch name
+      when 'checked'
+        checked = !!attr
+        if checked then node.setAttribute(name, attr)
+        else node.removeAttribute(name)
+        node.checked = checked
+      else
+        node.setAttribute(name, attr)
+
+  updateStyle = (node, property, style) ->
+    node.style.setProperty(property, style)
+
+  updateTextNode = (node, __, value) ->
+    node.data = toString(value)
+
+  updateItem = (node, name, prop, updateFunc) ->
+    updateFunc(node, name,
+      if isProperty(prop) or isComputed(prop)
+        prop(_.curry(updateFunc)(node, name))
+        prop()
+      else prop
+    )
+
+  addTextNode = (node, content) ->
+    textNode = document.createTextNode()
+    node.appendChild(textNode)
+    updateItem textNode, 'data', content, updateTextNode
+
+  addChildNode = (node, content, coll) ->
+    child = html(content)
+    addChildTemplate.call(@, node, child, coll)
+
   removeChildDom = (node, child) ->
     -> node.removeChild(child)
 
   removeChild = (children, child) ->
     -> children.slice _.indexOf(children, child), 1
-
-  addTextNode = (node, content, coll) ->
-    textNode =
-      document.createTextNode(
-        switch
-          when isProperty(content) or isComputed(content)
-            content (value) ->
-              textNode.data = toString(value)
-            content()
-          else toString(content)
-      )
-    childRemove = removeChild(@children, content)
-    node.appendChild(textNode)
-
-  addChildNode = (node, content, coll) ->
-    child = html(content)
-    addChildTemplate.call(@, node, child, coll)
 
   addChildTemplate = (node, child, coll) ->
     @children.push(child)
@@ -317,7 +336,7 @@
           applyRest.call(@, node, arg)
         when _.isArray(arg)
           addChildNode.call(@, node, arg, coll)
-        else addTextNode.call(@, node, arg, coll)
+        else addTextNode.call(@, node, arg)
 
   tagSplitter = /([^\s\.\#]*)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/
 
@@ -328,30 +347,6 @@
   events =
     ("click focus blur dblclick change mousedown mousemove mouseout " +
      "mouseover mouseup resize scroll select submit load unload").split(" ")
-
-  updateClassName = (node, __, classes) ->
-    node.className = classes.join(" ")
-
-  updateAttribute = (node, name, attr) ->
-    switch name
-      when 'checked'
-        checked = !!attr
-        if checked then node.setAttribute(name, attr)
-        else node.removeAttribute(name)
-        node.checked = checked
-      else
-        node.setAttribute(name, attr)
-
-  updateStyle = (node, property, style) ->
-    node.style.setProperty(property, style)
-
-  updateItem = (node, name, prop, updateFunc) ->
-    updateFunc(node, name,
-      if isProperty(prop) or isComputed(prop)
-        prop(_.curry(updateFunc)(node, name))
-        prop()
-      else prop
-    )
 
   applyAttributes = (node, id, classes, attributes) ->
     attributes['id'] = id if id
