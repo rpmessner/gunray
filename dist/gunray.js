@@ -423,11 +423,11 @@
         }
       });
     };
-    tagSplitter = /([^\s\.\#]+)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/;
+    tagSplitter = /([^\s\.\#]*)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/;
     splitTag = function(tagName) {
       var classnames, id, __, _ref;
       _ref = tagName.match(tagSplitter), __ = _ref[0], tagName = _ref[1], id = _ref[2], classnames = _ref[3];
-      return [tagName, id, (classnames ? classnames.split(".") : void 0)];
+      return [tagName || 'div', id, (classnames ? classnames.split(".") : void 0)];
     };
     events = ("click focus blur dblclick change mousedown mousemove mouseout " + "mouseover mouseup resize scroll select submit load unload").split(" ");
     updateClassName = function(node, __, classes) {

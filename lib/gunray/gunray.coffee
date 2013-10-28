@@ -319,11 +319,11 @@
           addChildNode.call(@, node, arg, coll)
         else addTextNode.call(@, node, arg, coll)
 
-  tagSplitter = /([^\s\.\#]+)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/
+  tagSplitter = /([^\s\.\#]*)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/
 
   splitTag = (tagName) ->
     [__, tagName, id, classnames] = tagName.match tagSplitter
-    [tagName, id, (classnames.split(".") if classnames)]
+    [tagName or 'div', id, (classnames.split(".") if classnames)]
 
   events =
     ("click focus blur dblclick change mousedown mousemove mouseout " +

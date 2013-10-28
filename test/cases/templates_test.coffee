@@ -57,11 +57,16 @@ test 'can use class selector', 2, ->
   equalHtml html(['div.foo.bar']), '<div class="foo bar"></div>'
 
 test 'can use class attribute', 1, ->
-  equalHtml html(['div', class: 'panel']), '<div class="panel"></div>'
+  equalHtml html(['div', class: 'panel']),
+    '<div class="panel"></div>',
+    'can use class attribute'
 
 test 'can combine id and class selectors', 2, ->
   equalHtml html(['div#baz.foo']), '<div id="baz" class="foo"></div>'
   equalHtml html(['div#baz.foo.bar']), '<div id="baz" class="foo bar"></div>'
+
+test 'default tag type is div', ->
+  equalHtml html(['#baz']), '<div id="baz"></div>', 'default tag type is div'
 
 test 'can set properties', 2, ->
   a = html(['a', href: 'http://google.com']).dom
