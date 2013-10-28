@@ -1,6 +1,6 @@
 (function() {
   (function(global, _) {
-    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle;
+    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle;
     Gunray = {};
     toString = function(x) {
       return "" + x;
@@ -469,7 +469,7 @@
       return _.each(attributes, function(attr, name) {
         switch (false) {
           case name !== 'classes':
-            return updateItem(node, 'classes', attr, updateClassName);
+            return updateItem(node, 'className', attr, updateClassName);
           case name !== 'style':
             return _.each(attr, function(style, property) {
               return updateItem(node, property, style, updateStyle);
@@ -494,6 +494,18 @@
     isAttributes = function(arg) {
       return _.isObject(arg) && !_.isArray(arg) && !_.isFunction(arg) && !isCollection(arg);
     };
+    isTag = function(node, tagName) {
+      return !isBlank(node) && !isBlank(tagName) && node.tagName.toLowerCase() === tagName.toLowerCase();
+    };
+    findOrCreateDom = function(id, tagName) {
+      var ret;
+      ret = document.getElementById(id);
+      if (isBlank(ret) || !isTag(ret, tagName)) {
+        return document.createElement(tagName);
+      } else {
+        return ret;
+      }
+    };
     Template = function() {};
     Template.create = function(template, options) {
       var attributes, children, classes, id, node, rest, tagName, _ref, _ref1;
@@ -504,7 +516,7 @@
       _ref = splitTag(tagName), tagName = _ref[0], id = _ref[1], classes = _ref[2];
       _ref1 = getAttributes(template), attributes = _ref1[0], rest = _ref1[1];
       children = [];
-      node = document.createElement(tagName);
+      node = findOrCreateDom(id, tagName);
       _.extend(this, {
         __type__: Template,
         __context__: options.item,

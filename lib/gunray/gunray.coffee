@@ -362,7 +362,7 @@
     _.each attributes, (attr, name) ->
       switch
         when name is 'classes'
-          updateItem(node, 'classes', attr, updateClassName)
+          updateItem(node, 'className', attr, updateClassName)
         when name is 'style'
           _.each attr, (style, property) ->
             updateItem(node, property, style, updateStyle)
@@ -385,6 +385,17 @@
     !_.isFunction(arg) and
     !isCollection(arg)
 
+  isTag = (node, tagName) ->
+    !isBlank(node) and
+    !isBlank(tagName) and
+    node.tagName.toLowerCase() is tagName.toLowerCase()
+
+  findOrCreateDom = (id, tagName) ->
+    ret = document.getElementById(id)
+    if isBlank(ret) or !isTag(ret, tagName)
+      document.createElement(tagName)
+    else ret
+
   Template = ->
   Template.create = (template, options) ->
     options = options || {}
@@ -400,7 +411,7 @@
 
     children = []
 
-    node = document.createElement(tagName)
+    node = findOrCreateDom(id, tagName)
 
     _.extend @,
       __type__: Template

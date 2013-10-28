@@ -6,9 +6,15 @@ object = Gunray.object
 collection = Gunray.collection
 computed = Gunray.computed
 
+domDiv = null
+
 module "Gunray Template",
-  setup:  ->
+  setup: ->
+    domDiv = document.createElement('div')
+    document.body.appendChild domDiv
   teardown: ->
+    document.body.removeChild domDiv
+    domDiv = null
 
 test 'creates template', 3, ->
   t = html(['p'])
@@ -190,3 +196,15 @@ asyncTest 'computed properties', ->
   waitForSync ->
     equalHtml p, '<p>11</p>', 'outputs computed property to html'
     start()
+
+test 'template uses existing dom ids', ->
+  domDiv.id = 'foo'
+
+  div = html(['#foo', ['p', 'hello page']])
+  equal domDiv.innerHTML, div.dom.innerHTML
+
+test 'does not use existing dom ids if tags do not match', ->
+  domDiv.id = 'foo'
+
+  div = html(['p#foo', ['p', 'hello page']])
+  notEqual domDiv.innerHTML, div.dom.innerHTML
