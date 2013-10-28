@@ -276,7 +276,7 @@
         });
       };
       reduce = function(memo, func) {
-        return collection(_.reduce(data, func, memo));
+        return _.reduce(data, func, memo);
       };
       _.extend(this, {
         __type__: Collection,
@@ -309,28 +309,39 @@
     isCollection = isColl = isTypeFunc(Collection);
     Computed = function() {};
     Computed.create = function() {
-      var bindings, bound, callBindings, func, getComputed, retval,
+      var bindings, callBindings, func, getComputed, properties, propertyValues, retval,
         _this = this;
-      bound = Array.prototype.slice.call(arguments);
-      func = bound.pop();
-      assert(_.map(bound, function(x) {
-        return isProperty(x);
-      }), 'must bind on properties');
+      properties = Array.prototype.slice.call(arguments);
+      func = properties.pop();
       bindings = [];
-      _.map(bound, function(x) {
-        return x(function() {
-          return callBindings();
-        });
+      _.map(properties, function(prop) {
+        switch (false) {
+          case !isCollection(prop):
+            return prop.bind(function() {
+              return callBindings();
+            });
+          case !isProperty(prop):
+            return prop(function() {
+              return callBindings();
+            });
+        }
       });
       callBindings = _.debounce(function() {
         return _.map(bindings, function(binding) {
           return binding(getComputed());
         });
       }, 1);
+      propertyValues = function() {
+        return _.map(properties, function(x) {
+          if (isProperty(x)) {
+            return x.call();
+          } else {
+            return x;
+          }
+        });
+      };
       getComputed = function() {
-        return func.apply(_this, _.map(bound, function(x) {
-          return x.call();
-        }));
+        return func.apply(_this, propertyValues());
       };
       retval = function(binding) {
         if (!isBlank(binding)) {

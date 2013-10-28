@@ -1,6 +1,7 @@
 computed = Gunray.computed
 isComputed = Gunray.isComputed
 prop = Gunray.property
+collection = Gunray.collection
 
 comp = null
 
@@ -38,3 +39,23 @@ asyncTest 'called only once on multiple bindings', 1, ->
   p1(1)
   p2(2)
   p3(3)
+
+test 'can computed based on collection', 1, ->
+  coll = collection(['a','b','c','d'])
+  comp = computed coll, (c) ->
+    c.reduce "", (a, b) -> a + b()
+  equal comp(), 'abcd'
+
+asyncTest 'updates on collection change', 2, ->
+  coll = collection(['a','b','c','d'])
+  comp = computed coll, (c) ->
+    c.reduce "", (a, b) -> a + b()
+
+  coll.add 'e'
+  waitForSync ->
+    equal comp(), 'abcde'
+
+    coll.removeAt(0)
+    waitForSync ->
+      equal comp(), 'bcde'
+      start()

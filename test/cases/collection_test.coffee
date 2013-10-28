@@ -112,8 +112,8 @@ test 'provides reduce function', 2, ->
   result = coll.reduce [], (coll, val) ->
     coll.push val.get('firstName')
     coll
-  equal result.at(0)(), 'first'
-  equal result.at(1)(), 'Charley'
+  equal result[0], 'first'
+  equal result[1], 'Charley'
 
 test 'allows integer access', 1, ->
   equal coll.at(0).get('firstName'), 'first'

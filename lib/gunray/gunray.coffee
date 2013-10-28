@@ -207,7 +207,7 @@
     mapHtml = (func) =>
       map (item) => html(func(item), collection: @, item: item)
 
-    reduce = (memo, func) -> collection _.reduce(data, func, memo)
+    reduce = (memo, func) -> _.reduce(data, func, memo)
 
     _.extend @,
       __type__: Collection
@@ -236,21 +236,29 @@
   #- Computed ----------------------------------------------
   Computed = ->
   Computed.create = ->
-    bound = Array::slice.call(arguments)
-    func = bound.pop()
-
-    assert (_.map bound, (x) -> isProperty(x)), 'must bind on properties'
+    properties = Array::slice.call(arguments)
+    func = properties.pop()
 
     bindings = []
 
-    _.map bound, (x) ->
-      x -> callBindings()
+    _.map properties, (prop) ->
+      switch
+        when isCollection(prop)
+          prop.bind -> callBindings()
+        when isProperty(prop)
+          prop -> callBindings()
 
     callBindings = _.debounce(->
       _.map bindings, (binding) -> binding getComputed()
     , 1)
 
-    getComputed = => func.apply @, _.map bound, (x) -> x.call()
+    propertyValues = ->
+      _.map properties, (x) ->
+        if isProperty(x) then x.call()
+        else x
+
+    getComputed = =>
+      func.apply @, propertyValues()
 
     retval = (binding) ->
       unless isBlank binding
