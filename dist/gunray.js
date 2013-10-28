@@ -1,6 +1,6 @@
 (function() {
   (function(global, _) {
-    var Collection, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, creator, events, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isHtml, isObj, isObject, isProperty, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateNodeAttribute, updateNodeClassName;
+    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateNodeAttribute, updateNodeClassName;
     Gunray = {};
     toString = function(x) {
       return "" + x;
@@ -19,8 +19,20 @@
       };
     };
     assert = function(cond, msg) {
-      if (!cond) {
-        throw msg;
+      if (_.isArray(cond)) {
+        if (!_.all(cond)) {
+          throw msg;
+        }
+      } else {
+        if (!cond) {
+          throw msg;
+        }
+      }
+    };
+    DEBUG = false;
+    debug = function() {
+      if (DEBUG) {
+        return console.log.apply(global, arguments);
       }
     };
     Property = function() {};
@@ -41,6 +53,7 @@
             return value;
           default:
             value = val;
+            debug("property changed", value, bindings);
             _.each(bindings, function(obs) {
               return obs(value);
             });
@@ -57,6 +70,7 @@
     bindFunc = function(self, bindings) {
       return function() {
         var bound, first;
+        debug("binding: ", self, bindings, arguments);
         first = _.first(arguments);
         bound = [];
         switch (false) {
@@ -88,6 +102,7 @@
     };
     triggerFunc = function(self, bindings) {
       return function(item, event, value, previous) {
+        debug("triggering: ", self, bindings, arguments);
         _.each(_.clone(bindings), function(binding) {
           if (binding.event === event || binding.event === 'all') {
             if (!isBlank(binding.property)) {
@@ -194,11 +209,10 @@
     isObj = isObject = isTypeFunc(Obj);
     Collection = function() {};
     Collection.create = function() {
-      var addItem, arg, atIndex, bind, bindings, data, each, identity, iterator, length, makeCollectionItem, map, mapHtml, options, reduce, removeIndex, removeItem, trigger,
+      var addItem, arg, atIndex, bind, bindings, data, each, iterator, length, makeCollectionItem, map, mapHtml, options, reduce, removeIndex, removeItem, trigger,
         _this = this;
       arg = _.first(arguments);
       assert(_.isArray(arg), "Invalid Argument");
-      identity = property(this);
       makeCollectionItem = function(item, index) {
         var retval;
         retval = (function() {
@@ -216,7 +230,7 @@
           }
         })();
         retval.index = property(index);
-        retval.collection = identity;
+        retval.collection = property(_this);
         return retval;
       };
       data = _.map(arg, makeCollectionItem);
@@ -224,7 +238,9 @@
       bindings = options.bindings || [];
       bind = bindFunc(this, bindings);
       trigger = triggerFunc(this, bindings);
-      iterator = options.iterator || identity;
+      iterator = options.iterator || function(x) {
+        return x;
+      };
       length = function() {
         return data.length;
       };
@@ -260,6 +276,7 @@
       mapHtml = function(func) {
         return map(function(item) {
           return html(func(item), {
+            collection: _this,
             item: item
           });
         });
@@ -292,7 +309,7 @@
         size: length,
         each: each,
         map: map,
-        mapHtml: mapHtml,
+        html: mapHtml,
         inject: reduce,
         reduce: reduce
       });
@@ -300,6 +317,45 @@
     };
     collection = creator(Collection);
     isCollection = isColl = isTypeFunc(Collection);
+    Computed = function() {};
+    Computed.create = function() {
+      var bindings, bound, callBindings, func, getComputed, retval,
+        _this = this;
+      bound = Array.prototype.slice.call(arguments);
+      func = bound.pop();
+      assert(_.map(bound, function(x) {
+        return isProperty(x);
+      }), 'must bind on properties');
+      bindings = [];
+      _.map(bound, function(x) {
+        return x(function() {
+          return callBindings();
+        });
+      });
+      callBindings = _.debounce(function() {
+        return _.map(bindings, function(binding) {
+          return binding(getComputed());
+        });
+      }, 1);
+      getComputed = function() {
+        return func.apply(_this, _.map(bound, function(x) {
+          return x.call();
+        }));
+      };
+      retval = function(binding) {
+        if (!isBlank(binding)) {
+          return bindings.push(binding);
+        } else {
+          return getComputed();
+        }
+      };
+      _.extend(retval, {
+        __type__: Computed
+      });
+      return retval;
+    };
+    computed = creator(Computed);
+    isComputed = isTypeFunc(Computed);
     removeChildDom = function(node, child) {
       return function() {
         return node.removeChild(child);
@@ -310,11 +366,11 @@
         return children.slice(_.indexOf(children, child), 1);
       };
     };
-    addTextNode = function(node, content, collection) {
+    addTextNode = function(node, content, coll) {
       var childRemove, textNode;
       textNode = document.createTextNode((function() {
         switch (false) {
-          case !isProperty(content):
+          case !(isProperty(content) || isComputed(content)):
             content(function(value) {
               return textNode.data = toString(value);
             });
@@ -323,21 +379,21 @@
             return toString(content);
         }
       })());
-      childRemove = removeChild(node, textNode);
+      childRemove = removeChild(this.children, content);
       return node.appendChild(textNode);
     };
-    addChildNode = function(node, content, collection) {
+    addChildNode = function(node, content, coll) {
       var child;
       child = html(content);
-      return addChildTemplate.call(this, node, child, collection);
+      return addChildTemplate.call(this, node, child, coll);
     };
-    addChildTemplate = function(node, child, collection) {
+    addChildTemplate = function(node, child, coll) {
       var childRemove, domRemove, unbind;
       this.children.push(child);
       domRemove = removeChildDom(node, child.dom);
       childRemove = removeChild(this.children, child);
-      if (!isBlank(collection)) {
-        unbind = collection.bind({
+      if (!isBlank(coll)) {
+        unbind = coll.bind({
           remove: function(item) {
             if (item === child.__context__) {
               domRemove();
@@ -349,13 +405,13 @@
       }
       return node.appendChild(child.dom);
     };
-    applyRest = function(node, rest, collection) {
+    applyRest = function(node, rest, coll) {
       var _this = this;
       return _.each(rest, function(arg) {
         var applyItem;
         switch (false) {
           case !isHtml(arg):
-            return addChildTemplate.call(_this, node, arg, collection);
+            return addChildTemplate.call(_this, node, arg, coll);
           case !isCollection(arg):
             applyItem = function(itemFunc) {
               return function(item) {
@@ -373,9 +429,9 @@
           case !(_.isArray(arg) && _.isArray(_.first(arg))):
             return applyRest.call(_this, node, arg);
           case !(_.isArray(arg) && _.isString(_.first(arg))):
-            return addChildNode.call(_this, node, arg, collection);
+            return addChildNode.call(_this, node, arg, coll);
           default:
-            return addTextNode(node, arg, collection);
+            return addTextNode.call(_this, node, arg, coll);
         }
       });
     };
@@ -429,7 +485,7 @@
       return _.each(attributes, function(attr, name) {
         switch (false) {
           case name !== 'classes':
-            return updateClassName(node, isProperty(attr) ? (attr(updateNodeClassName(node)), attr()) : attr);
+            return updateClassName(node, isProperty(attr) || isComputed(attr) ? (attr(updateNodeClassName(node)), attr()) : attr);
           case name !== 'style':
             return _.each(attr, function(style, property) {
               return node.style.setProperty(property, style);
@@ -437,7 +493,7 @@
           case !_.include(events, name):
             return attr(node);
           default:
-            return updateAttribute(node, name, isProperty(attr) ? (attr(updateNodeAttribute(node, name)), attr()) : attr);
+            return updateAttribute(node, name, isProperty(attr) || isComputed(attr) ? (attr(updateNodeAttribute(node, name)), attr()) : attr);
         }
       });
     };
@@ -456,7 +512,7 @@
     };
     Template = function() {};
     Template.create = function(template, options) {
-      var attributes, children, classes, id, item, node, rest, tagName, _ref, _ref1;
+      var attributes, children, classes, id, node, rest, tagName, _ref, _ref1;
       options = options || {};
       assert(_.isArray(template), "Invalid Template");
       tagName = _.first(template);
@@ -464,16 +520,15 @@
       _ref = splitTag(tagName), tagName = _ref[0], id = _ref[1], classes = _ref[2];
       _ref1 = getAttributes(template), attributes = _ref1[0], rest = _ref1[1];
       children = [];
-      item = options.item;
       node = document.createElement(tagName);
       _.extend(this, {
         __type__: Template,
-        __context__: item,
+        __context__: options.item,
         dom: node,
         children: children
       });
       applyAttributes.call(this, node, id, classes, attributes);
-      applyRest.call(this, node, rest);
+      applyRest.call(this, node, rest, options.collection);
       return this;
     };
     html = creator(Template);
@@ -483,10 +538,12 @@
       isObject: isObject,
       isCollection: isCollection,
       isHtml: isHtml,
+      isComputed: isComputed,
       html: html,
       property: property,
       object: object,
-      collection: collection
+      collection: collection,
+      computed: computed
     });
     return global.Gunray = Gunray;
   })(this, _);

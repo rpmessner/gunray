@@ -4,6 +4,7 @@ isHtml = Gunray.isHtml
 property = Gunray.property
 object = Gunray.object
 collection = Gunray.collection
+computed = Gunray.computed
 
 module "Gunray Template",
   setup:  ->
@@ -114,9 +115,20 @@ test 'observable object property', ->
   obj.set('name', 'Louis')
   equalHtml div, "<div>Louis</div>"
 
-test 'observable collection', ->
+test 'observable collection properties', ->
+  coll = collection(['foo','bar','fizz','buzz'])
+  ul = html(['ul', coll.html (obj) ->
+              ['li', obj.index, obj]
+            ])
+  equalHtml ul,
+        "<ul><li>0foo</li><li>1bar</li><li>2fizz</li><li>3buzz</li></ul>"
+  coll.removeAt(1)
+  equalHtml ul,
+        "<ul><li>0foo</li><li>1fizz</li><li>2buzz</li></ul>"
+
+test 'observable collection objects', ->
   coll = collection([name: 'Karen'])
-  ul = html(['ul', coll.mapHtml (obj) ->
+  ul = html(['ul', coll.html (obj) ->
               ['li', obj.index, obj.prop("name")]
             ])
   equalHtml ul, "<ul><li>0Karen</li></ul>"
@@ -128,3 +140,13 @@ test 'observable collection', ->
   equalHtml ul, "<ul><li>0Louis</li><li>1Keith</li><li>2Richard</li></ul>"
   coll.removeAt(1)
   equalHtml ul, "<ul><li>0Louis</li><li>1Richard</li></ul>"
+
+asyncTest 'computed properties', ->
+  [p1, p2] = _.times 2, (n) -> property(n)
+  comp = computed(p1, p2, (a, b) -> "" + a + b)
+  p = html(['p', {}, comp])
+  equalHtml p, '<p>01</p>', 'outputs computed property to html'
+  p1(1)
+  waitForSync ->
+    equalHtml p, '<p>11</p>', 'outputs computed property to html'
+    start()

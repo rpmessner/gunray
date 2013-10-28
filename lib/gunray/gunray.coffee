@@ -12,7 +12,14 @@
   isTypeFunc = (type) ->
     (object) -> !isBlank(object) and object.__type__ is type
 
-  assert = (cond, msg) -> throw msg unless cond
+  assert = (cond, msg) ->
+    if _.isArray(cond)
+      throw msg unless _.all(cond)
+    else
+      throw msg unless cond
+
+  DEBUG = false
+  debug = -> if DEBUG then console.log.apply(global, arguments)
 
   #- Property ----------------------------------------------
   Property = ->
@@ -28,6 +35,7 @@
           value
         else
           value = val
+          debug "property changed", value, bindings
           _.each bindings, (obs) -> obs(value)
           value
 
@@ -42,6 +50,7 @@
   #- Events ------------------------------------------------
   bindFunc = (self, bindings) ->
     ->
+      debug "binding: ", self, bindings, arguments
       first = _.first(arguments)
       bound = []
       switch
@@ -57,13 +66,13 @@
 
   triggerFunc = (self, bindings) ->
     (item, event, value, previous) ->
+      debug "triggering: ", self, bindings, arguments
       _.each _.clone(bindings), (binding) ->
         if binding.event is event or binding.event is 'all'
           unless isBlank(binding.property)
-            unless isBlank(item.prop(binding.property))
-              binding.callback(
-                item.get(binding.property), item, event, previous
-              )
+            binding.callback(
+              item.get(binding.property), item, event, previous
+            ) unless isBlank item.prop(binding.property)
           else
             binding.callback(item, event)
       triggerUpstream(self, arguments)
@@ -156,8 +165,6 @@
 
     assert _.isArray(arg), "Invalid Argument"
 
-    identity = property(@)
-
     makeCollectionItem = (item, index) =>
       retval =
         switch
@@ -167,7 +174,7 @@
           when _.isArray(item)  then collection(item)
           else  property(item)
       retval.index = property(index)
-      retval.collection = identity
+      retval.collection = property(@)
       retval
 
     data = _.map arg, makeCollectionItem
@@ -177,7 +184,7 @@
 
     bind = bindFunc(@, bindings)
     trigger = triggerFunc(@, bindings)
-    iterator = options.iterator || identity
+    iterator = options.iterator || (x) -> x
 
     length = -> data.length
 
@@ -201,8 +208,8 @@
     map = (func) ->
       collection _.map(data, func), bindings: bindings, iterator: func
 
-    mapHtml = (func) ->
-      map (item) -> html(func(item), item: item)
+    mapHtml = (func) =>
+      map (item) => html(func(item), collection: @, item: item)
 
     reduce = (memo, func) -> collection _.reduce(data, func, memo)
 
@@ -225,7 +232,7 @@
       size: length
       each: each
       map: map
-      mapHtml: mapHtml
+      html: mapHtml
       inject: reduce
       reduce: reduce
 
@@ -234,6 +241,39 @@
   collection = creator(Collection)
   isCollection = isColl = isTypeFunc(Collection)
 
+  #- Computed ----------------------------------------------
+  Computed = ->
+  Computed.create = ->
+    bound = Array::slice.call(arguments)
+    func = bound.pop()
+
+    assert (_.map bound, (x) -> isProperty(x)), 'must bind on properties'
+
+    bindings = []
+
+    _.map bound, (x) ->
+      x -> callBindings()
+
+    callBindings = _.debounce(->
+      _.map bindings, (binding) -> binding getComputed()
+    , 1)
+
+    getComputed = => func.apply @, _.map bound, (x) -> x.call()
+
+    retval = (binding) ->
+      unless isBlank binding
+        bindings.push(binding)
+      else
+        getComputed()
+
+    _.extend retval,
+      __type__: Computed
+
+    retval
+
+  computed = creator(Computed)
+  isComputed = isTypeFunc(Computed)
+
   #- Template ----------------------------------------------
   removeChildDom = (node, child) ->
     -> node.removeChild(child)
@@ -241,46 +281,41 @@
   removeChild = (children, child) ->
     -> children.slice _.indexOf(children, child), 1
 
-  addTextNode = (node, content, collection) ->
+  addTextNode = (node, content, coll) ->
     textNode =
       document.createTextNode(
         switch
-          when isProperty(content)
+          when isProperty(content) or isComputed(content)
             content (value) ->
               textNode.data = toString(value)
             content()
           else toString(content)
       )
-    childRemove = removeChild(node, textNode)
-    # unbind = collection.bind(
-    #   remove: (item) ->
-    #     childRemove()
-    #     unbind()
-    # ) unless isBlank collection
+    childRemove = removeChild(@children, content)
     node.appendChild(textNode)
 
-  addChildNode = (node, content, collection) ->
+  addChildNode = (node, content, coll) ->
     child = html(content)
-    addChildTemplate.call(@, node, child, collection)
+    addChildTemplate.call(@, node, child, coll)
 
-  addChildTemplate = (node, child, collection) ->
+  addChildTemplate = (node, child, coll) ->
     @children.push(child)
     domRemove = removeChildDom(node, child.dom)
     childRemove = removeChild(@children, child)
-    unbind = collection.bind(
+    unbind = coll.bind(
       remove: (item) ->
         if item is child.__context__
           domRemove()
           childRemove()
           unbind()
-    ) unless isBlank collection
+    ) unless isBlank coll
     node.appendChild child.dom
 
-  applyRest = (node, rest, collection) ->
+  applyRest = (node, rest, coll) ->
     _.each rest, (arg) =>
       switch
         when isHtml(arg)
-          addChildTemplate.call(@, node, arg, collection)
+          addChildTemplate.call(@, node, arg, coll)
         when isCollection(arg)
           applyItem = (itemFunc) =>
             (item) => applyRest.call(@, node, [itemFunc(item)], arg)
@@ -290,8 +325,8 @@
         when _.isArray(arg) and _.isArray(_.first(arg))
           applyRest.call(@, node, arg)
         when _.isArray(arg) and _.isString(_.first(arg))
-          addChildNode.call(@, node, arg, collection)
-        else addTextNode(node, arg, collection)
+          addChildNode.call(@, node, arg, coll)
+        else addTextNode.call(@, node, arg, coll)
 
   tagSplitter = /([^\s\.\#]+)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/
 
@@ -332,7 +367,7 @@
       switch
         when name is 'classes'
           updateClassName(node,
-            if isProperty(attr)
+            if isProperty(attr) or isComputed(attr)
               attr(updateNodeClassName(node))
               attr()
             else attr
@@ -344,7 +379,7 @@
           attr(node)
         else
           updateAttribute(node, name,
-            if isProperty(attr)
+            if isProperty(attr) or isComputed(attr)
               attr(updateNodeAttribute(node, name))
               attr()
             else attr
@@ -379,17 +414,16 @@
 
     children = []
 
-    item = options.item
     node = document.createElement(tagName)
 
     _.extend @,
       __type__: Template
-      __context__: item
+      __context__: options.item
       dom: node
       children: children
 
     applyAttributes.call(@, node, id, classes, attributes)
-    applyRest.call(@, node, rest)
+    applyRest.call(@, node, rest, options.collection)
 
     @
 
@@ -402,11 +436,12 @@
     isObject: isObject
     isCollection: isCollection
     isHtml: isHtml
+    isComputed: isComputed
     html: html
     property: property
     object: object
     collection: collection
-
+    computed: computed
   global.Gunray = Gunray
 
 )(this, _)
