@@ -1,6 +1,6 @@
 (function() {
   (function(global, _) {
-    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateNodeAttribute, updateNodeClassName;
+    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle;
     Gunray = {};
     toString = function(x) {
       return "" + x;
@@ -132,9 +132,6 @@
       data = _.reduce(input, function(coll, value, key) {
         var obj;
         switch (false) {
-          case !_.isFunction(value):
-            null;
-            break;
           case !_.isArray(value):
             coll[key] = collection(value);
             break;
@@ -195,11 +192,8 @@
       trigger = triggerFunc(this, bindings);
       _.extend(this, {
         __type__: Obj,
-        __data__: data,
-        __bindings__: bindings,
         get: getValue,
         set: setValue,
-        trigger: trigger,
         prop: getProperty,
         bind: bind
       });
@@ -286,8 +280,6 @@
       };
       _.extend(this, {
         __type__: Collection,
-        __data__: data,
-        __bindings__: bindings,
         at: atIndex,
         add: addItem,
         remove: removeItem,
@@ -305,8 +297,6 @@
           return _.last(data);
         },
         length: length,
-        count: length,
-        size: length,
         each: each,
         map: map,
         html: mapHtml,
@@ -424,11 +414,9 @@
             return arg.each(applyItem(function(item) {
               return item;
             }));
-          case !isBlank(arg):
-            return null;
           case !(_.isArray(arg) && _.isArray(_.first(arg))):
             return applyRest.call(_this, node, arg);
-          case !(_.isArray(arg) && _.isString(_.first(arg))):
+          case !_.isArray(arg):
             return addChildNode.call(_this, node, arg, coll);
           default:
             return addTextNode.call(_this, node, arg, coll);
@@ -442,18 +430,8 @@
       return [tagName, id, (classnames ? classnames.split(".") : void 0)];
     };
     events = ("click focus blur dblclick change mousedown mousemove mouseout " + "mouseover mouseup resize scroll select submit load unload").split(" ");
-    updateNodeClassName = function(node) {
-      return function(classes) {
-        return updateClassName(node, classes);
-      };
-    };
-    updateClassName = function(node, classes) {
+    updateClassName = function(node, __, classes) {
       return node.className = classes.join(" ");
-    };
-    updateNodeAttribute = function(node, name) {
-      return function(attr) {
-        return updateAttribute(node, name, attr);
-      };
     };
     updateAttribute = function(node, name, attr) {
       var checked;
@@ -470,6 +448,12 @@
           return node.setAttribute(name, attr);
       }
     };
+    updateStyle = function(node, property, style) {
+      return node.style.setProperty(property, style);
+    };
+    updateItem = function(node, name, prop, updateFunc) {
+      return updateFunc(node, name, isProperty(prop) || isComputed(prop) ? (prop(_.curry(updateFunc)(node, name)), prop()) : prop);
+    };
     applyAttributes = function(node, id, classes, attributes) {
       var classname;
       if (id) {
@@ -485,15 +469,15 @@
       return _.each(attributes, function(attr, name) {
         switch (false) {
           case name !== 'classes':
-            return updateClassName(node, isProperty(attr) || isComputed(attr) ? (attr(updateNodeClassName(node)), attr()) : attr);
+            return updateItem(node, 'classes', attr, updateClassName);
           case name !== 'style':
             return _.each(attr, function(style, property) {
-              return node.style.setProperty(property, style);
+              return updateItem(node, property, style, updateStyle);
             });
           case !_.include(events, name):
             return attr(node);
           default:
-            return updateAttribute(node, name, isProperty(attr) || isComputed(attr) ? (attr(updateNodeAttribute(node, name)), attr()) : attr);
+            return updateItem(node, name, attr, updateAttribute);
         }
       });
     };

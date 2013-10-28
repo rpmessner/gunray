@@ -18,9 +18,7 @@ test 'creates collection', 3, ->
   notEqual coll, null
   ok isCollection(coll)
 
-test 'provides length', 3, ->
-  equal coll.size(), 1
-  equal coll.count(), 1
+test 'provides length', 1, ->
   equal coll.length(), 1
 
 test 'add items', ->
@@ -46,7 +44,7 @@ test 'observes collection', 3, ->
 
   addItem()
 
-  equal coll.size(), 2
+  equal coll.length(), 2
 
 test 'observes collection event', 2, ->
   coll.bind(add: (obj) ->
@@ -55,7 +53,7 @@ test 'observes collection event', 2, ->
   coll.bind(remove: -> ok false)
   addItem()
 
-  equal coll.size(), 2
+  equal coll.length(), 2
 
 test 'removes collection binding', 1, ->
   unbind = coll.bind -> ok true
@@ -72,7 +70,7 @@ test 'observes collection property event', 3, ->
 
   addItem()
 
-  equal coll.size(), 2
+  equal coll.length(), 2
 
 test 'allows index access', 1, ->
   first = coll.at(0)

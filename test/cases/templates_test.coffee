@@ -81,6 +81,41 @@ test 'sets styles', 1, ->
   div = html(['div', style: {color: 'red'}]).dom
   equal div.style.color, 'red'
 
+test 'property styles', 2, ->
+  color = property('red')
+  div = html(['div', style: {color: color}]).dom
+  equal div.style.color, 'red'
+  color('blue')
+  equal div.style.color, 'blue'
+
+asyncTest 'computed property styles', 5, ->
+  bool1 = property(true)
+  bool2 = property(false)
+  comp = computed bool1, bool2, (a, b) ->
+    switch
+      when a and not b then 'red'
+      when not a and not b then 'green'
+      when a and b then 'blue'
+  counter = 0
+
+  comp -> counter += 1
+
+  div = html(['div', style: {color: comp}]).dom
+
+  equal div.style.color, 'red', 'equals computed value'
+
+  bool1(false)
+
+  waitForSync ->
+    equal counter, 1, 'calls binding'
+    equal div.style.color, 'green', 'equals computed value after update'
+
+    bool1(true); bool2(true)
+    waitForSync ->
+      equal counter, 2, 'calls binding once'
+      equal div.style.color, 'blue', 'equals computed value after update'
+      start()
+
 test 'sets data attributes', 1, ->
   div = html(['div', 'data-value': 5]).dom
   equal div.getAttribute('data-value'), '5'

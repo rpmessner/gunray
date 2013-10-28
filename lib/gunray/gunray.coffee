@@ -92,7 +92,6 @@
     input = _.first(arguments)
     data = _.reduce input, (coll, value, key) ->
       switch
-        when _.isFunction(value) then null
         when _.isArray(value)
           coll[key] = collection(value)
         when _.isObject(value)
@@ -145,11 +144,8 @@
 
     _.extend @,
       __type__: Obj
-      __data__: data
-      __bindings__: bindings
       get: getValue
       set: setValue
-      trigger: trigger
       prop: getProperty
       bind: bind
 
@@ -215,8 +211,6 @@
 
     _.extend @,
       __type__: Collection
-      __data__: data
-      __bindings__: bindings
       at: atIndex
       add: addItem
       remove: removeItem
@@ -228,8 +222,6 @@
       rest: -> _.rest(data)
       last: -> _.last(data)
       length: length
-      count: length
-      size: length
       each: each
       map: map
       html: mapHtml
@@ -321,10 +313,9 @@
             (item) => applyRest.call(@, node, [itemFunc(item)], arg)
           arg.bind(add: applyItem(arg.iterator))
           arg.each applyItem((item) -> item)
-        when isBlank(arg) then null
         when _.isArray(arg) and _.isArray(_.first(arg))
           applyRest.call(@, node, arg)
-        when _.isArray(arg) and _.isString(_.first(arg))
+        when _.isArray(arg)
           addChildNode.call(@, node, arg, coll)
         else addTextNode.call(@, node, arg, coll)
 
@@ -338,14 +329,8 @@
     ("click focus blur dblclick change mousedown mousemove mouseout " +
      "mouseover mouseup resize scroll select submit load unload").split(" ")
 
-  updateNodeClassName = (node) ->
-    (classes) -> updateClassName(node, classes)
-
-  updateClassName = (node, classes) ->
+  updateClassName = (node, __, classes) ->
     node.className = classes.join(" ")
-
-  updateNodeAttribute = (node, name) ->
-    (attr) -> updateAttribute(node, name, attr)
 
   updateAttribute = (node, name, attr) ->
     switch name
@@ -357,6 +342,17 @@
       else
         node.setAttribute(name, attr)
 
+  updateStyle = (node, property, style) ->
+    node.style.setProperty(property, style)
+
+  updateItem = (node, name, prop, updateFunc) ->
+    updateFunc(node, name,
+      if isProperty(prop) or isComputed(prop)
+        prop(_.curry(updateFunc)(node, name))
+        prop()
+      else prop
+    )
+
   applyAttributes = (node, id, classes, attributes) ->
     attributes['id'] = id if id
     attributes['classes'] = classes if classes
@@ -366,24 +362,14 @@
     _.each attributes, (attr, name) ->
       switch
         when name is 'classes'
-          updateClassName(node,
-            if isProperty(attr) or isComputed(attr)
-              attr(updateNodeClassName(node))
-              attr()
-            else attr
-          )
+          updateItem(node, 'classes', attr, updateClassName)
         when name is 'style'
           _.each attr, (style, property) ->
-            node.style.setProperty(property, style)
+            updateItem(node, property, style, updateStyle)
         when _.include(events, name)
           attr(node)
         else
-          updateAttribute(node, name,
-            if isProperty(attr) or isComputed(attr)
-              attr(updateNodeAttribute(node, name))
-              attr()
-            else attr
-          )
+          updateItem(node, name, attr, updateAttribute)
 
   getAttributes = (template) ->
     rest = _.rest(template)
