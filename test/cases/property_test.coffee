@@ -35,6 +35,15 @@ test 'binds observers', 2, ->
 
   p(r1)
 
+test 'supplies previous value to observers', 2, ->
+  p(r1)
+
+  p (val, old) ->
+    equal val, r2
+    equal old, r1
+
+  p(r2)
+
 test 'removes bindings', 2, ->
   p (val) ->
     equal val, r1

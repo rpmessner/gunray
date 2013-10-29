@@ -161,7 +161,20 @@ test 'observable object property', ->
   obj.set('name', 'Louis')
   equalHtml div, "<div>Louis</div>"
 
-test 'observable collection properties', ->
+test 'observable selected', ->
+  coll = collection(['foo','bar','fizz','buzz'])
+  content = html ["#content",
+                   "!!",
+                   coll.html selected: (selected) ->
+                     ["h1", selected, selected.index]
+                   "!!"]
+  equalHtml content, '<div id="content">!!!!</div>'
+  coll.selectAt(0)
+  equalHtml content, '<div id="content">!!<h1>foo0</h1>!!</div>'
+  coll.selectAt(1)
+  equalHtml content, '<div id="content">!!<h1>bar1</h1>!!</div>'
+
+test 'observable collection properties', 2, ->
   coll = collection(['foo','bar','fizz','buzz'])
   ul = html(['ul', coll.html (obj) ->
               ['li', obj.index, obj]

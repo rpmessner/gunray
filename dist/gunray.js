@@ -1,6 +1,6 @@
 (function() {
   (function(global, _) {
-    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle, updateTextNode;
+    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindChild, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle, updateTextNode;
     Gunray = {};
     toString = function(x) {
       return "" + x;
@@ -41,8 +41,9 @@
       bindings = [];
       value = _.first(arguments);
       returnFunc = function(val) {
+        var old;
         switch (false) {
-          case !_.isFunction(val):
+          case !(!isProperty(val) && _.isFunction(val)):
             bindings.push(val);
             return function() {
               return _.remove(bindings, function(x) {
@@ -52,10 +53,11 @@
           case !isBlank(val):
             return value;
           default:
+            old = value;
             value = val;
             debug("property changed", value, bindings);
             _.each(bindings, function(obs) {
-              return obs(value);
+              return obs(value, old);
             });
             return value;
         }
@@ -110,7 +112,7 @@
                 return binding.callback(item.get(binding.property), item, event, previous);
               }
             } else {
-              return binding.callback(item, event);
+              return binding.callback(item, event, previous);
             }
           }
         });
@@ -203,7 +205,7 @@
     isObj = isObject = isTypeFunc(Obj);
     Collection = function() {};
     Collection.create = function() {
-      var addItem, arg, atIndex, bind, bindings, data, each, iterator, length, makeCollectionItem, map, mapHtml, options, reduce, removeIndex, removeItem, trigger,
+      var addItem, arg, atIndex, bind, bindings, collectionHtml, data, each, iterator, length, makeCollectionItem, map, options, reduce, removeIndex, removeItem, selectAt, selected, selectedIndex, selectedItem, trigger,
         _this = this;
       arg = _.first(arguments);
       assert(_.isArray(arg), "Invalid Argument");
@@ -267,16 +269,55 @@
           iterator: func
         });
       };
-      mapHtml = function(func) {
-        return map(function(item) {
-          return html(func(item), {
-            collection: _this,
-            item: item
-          });
-        });
+      collectionHtml = function() {
+        var makeHtml;
+        arg = _.first(arguments);
+        makeHtml = function(func) {
+          return function(item) {
+            return html(func(item), {
+              collection: _this,
+              item: item
+            });
+          };
+        };
+        switch (false) {
+          case !_.isFunction(arg):
+            return map(makeHtml(arg));
+          case !_.isObject(arg):
+            return _.tap(property([]), function(ret) {
+              return selectedItem(function(item) {
+                return ret(makeHtml(arg.selected)(item));
+              });
+            });
+        }
       };
       reduce = function(memo, func) {
         return _.reduce(data, func, memo);
+      };
+      selectedIndex = property(-1);
+      selectedItem = property();
+      selectedItem(function(value, previous) {
+        return trigger(value, 'select', value, previous);
+      });
+      selectedIndex(function(idx) {
+        return selectedItem(atIndex(idx));
+      });
+      selected = function() {
+        var argument, idx;
+        argument = _.first(arguments);
+        switch (false) {
+          case !isBlank(argument):
+            return selectedItem();
+          case !_.isFunction(argument):
+            return selectedItem(function(item) {
+              return argument(item, selectedIndex());
+            });
+          case !(idx = _.indexOf(data, _.first(arguments))):
+            return selectedIndex(idx);
+        }
+      };
+      selectAt = function(index) {
+        return selectedIndex(index);
       };
       _.extend(this, {
         __type__: Collection,
@@ -299,9 +340,11 @@
         length: length,
         each: each,
         map: map,
-        html: mapHtml,
-        inject: reduce,
-        reduce: reduce
+        html: collectionHtml,
+        reduce: reduce,
+        selectAt: selectAt,
+        selectedIndex: selectedIndex,
+        selected: selected
       });
       return this;
     };
@@ -405,31 +448,42 @@
         return children.slice(_.indexOf(children, child), 1);
       };
     };
-    addChildTemplate = function(node, child, coll) {
-      var childRemove, domRemove, unbind;
+    addChildTemplate = function(node, child, coll, event, index) {
+      var sibling;
       this.children.push(child);
+      if (!isBlank(coll)) {
+        bindChild.apply(this, arguments);
+      }
+      if (!isBlank(index && index <= node.childNodes.length && (sibling = node.childNodes[index]))) {
+        return node.insertBefore(child.dom, sibling);
+      } else {
+        return node.appendChild(child.dom);
+      }
+    };
+    bindChild = function(node, child, coll, event) {
+      var bindArg, childRemove, domRemove, unbind, unbindAndRemove;
       domRemove = removeChildDom(node, child.dom);
       childRemove = removeChild(this.children, child);
-      if (!isBlank(coll)) {
-        unbind = coll.bind({
-          remove: function(item) {
-            if (item === child.__context__) {
-              domRemove();
-              childRemove();
-              return unbind();
-            }
-          }
-        });
-      }
-      return node.appendChild(child.dom);
+      unbindAndRemove = function() {
+        domRemove();
+        childRemove();
+        return unbind();
+      };
+      bindArg = {};
+      bindArg[event] = function(item, event, previous) {
+        if ((event === 'remove' && item === child.__context__) || (event === 'select' && _.last(arguments) === child.__context__)) {
+          return unbindAndRemove();
+        }
+      };
+      return unbind = coll.bind(bindArg);
     };
     applyRest = function(node, rest, coll) {
       var _this = this;
       return _.each(rest, function(arg) {
-        var applyItem;
+        var applyItem, child, index, updateFunc;
         switch (false) {
           case !isHtml(arg):
-            return addChildTemplate.call(_this, node, arg, coll);
+            return addChildTemplate.call(_this, node, arg, coll, 'remove');
           case !isCollection(arg):
             applyItem = function(itemFunc) {
               return function(item) {
@@ -445,7 +499,17 @@
           case !(_.isArray(arg) && _.isArray(_.first(arg))):
             return applyRest.call(_this, node, arg);
           case !_.isArray(arg):
-            return addChildNode.call(_this, node, arg, coll);
+            return addChildNode.call(_this, node, arg);
+          case !(isProperty(arg) && (child = arg()) && _.isArray(child)):
+            index = node.childNodes.length;
+            updateFunc = function(updated) {
+              return addChildTemplate.call(_this, node, updated, updated.__collection__, 'select', index);
+            };
+            arg(updateFunc);
+            if (!isBlank(_.first(child))) {
+              return updateFunc(child);
+            }
+            break;
           default:
             return addTextNode.call(_this, node, arg);
         }
@@ -524,6 +588,7 @@
       _.extend(this, {
         __type__: Template,
         __context__: options.item,
+        __collection__: options.collection,
         dom: node,
         children: children
       });

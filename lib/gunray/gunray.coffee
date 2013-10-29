@@ -28,15 +28,16 @@
     value = _.first(arguments)
     returnFunc = (val) ->
       switch
-        when _.isFunction(val)
+        when !isProperty(val) and _.isFunction(val)
           bindings.push(val)
           -> _.remove bindings, (x) -> x is val
         when isBlank(val)
           value
         else
+          old = value
           value = val
           debug "property changed", value, bindings
-          _.each bindings, (obs) -> obs(value)
+          _.each bindings, (obs) -> obs(value, old)
           value
 
     _.extend returnFunc,
@@ -74,7 +75,7 @@
               item.get(binding.property), item, event, previous
             ) unless isBlank item.prop(binding.property)
           else
-            binding.callback(item, event)
+            binding.callback(item, event, previous)
       triggerUpstream(self, arguments)
 
   triggerUpstream = (item, args) ->
@@ -204,10 +205,42 @@
     map = (func) ->
       collection _.map(data, func), bindings: bindings, iterator: func
 
-    mapHtml = (func) =>
-      map (item) => html(func(item), collection: @, item: item)
+    collectionHtml = =>
+      arg = _.first arguments
+      makeHtml = (func) =>
+        (item) =>
+          html(func(item), collection: @, item: item)
+      switch
+        when _.isFunction(arg)
+          map makeHtml(arg)
+        when _.isObject(arg)
+          _.tap property([]), (ret) ->
+            selectedItem (item) -> ret(makeHtml(arg.selected)(item))
 
     reduce = (memo, func) -> _.reduce(data, func, memo)
+
+    selectedIndex = property(-1)
+    selectedItem = property()
+
+    selectedItem (value, previous) =>
+      trigger(value, 'select', value, previous)
+
+    selectedIndex (idx) ->
+      selectedItem(atIndex(idx))
+
+    selected = ->
+      argument = _.first arguments
+      switch
+        when isBlank argument
+          selectedItem()
+        when _.isFunction argument
+          selectedItem (item) ->
+            argument(item, selectedIndex())
+        when idx = _.indexOf data, _.first(arguments)
+          selectedIndex idx
+
+    selectAt = (index) ->
+      selectedIndex(index)
 
     _.extend @,
       __type__: Collection
@@ -224,9 +257,11 @@
       length: length
       each: each
       map: map
-      html: mapHtml
-      inject: reduce
+      html: collectionHtml
       reduce: reduce
+      selectAt: selectAt
+      selectedIndex: selectedIndex
+      selected: selected
 
     @
 
@@ -317,24 +352,35 @@
   removeChild = (children, child) ->
     -> children.slice _.indexOf(children, child), 1
 
-  addChildTemplate = (node, child, coll) ->
+  addChildTemplate = (node, child, coll, event, index) ->
     @children.push(child)
+    bindChild.apply(@, arguments) unless isBlank(coll)
+    unless isBlank index and
+           index <= node.childNodes.length and
+           sibling = node.childNodes[index]
+      node.insertBefore(child.dom, sibling)
+    else
+      node.appendChild child.dom
+
+  bindChild = (node, child, coll, event) ->
     domRemove = removeChildDom(node, child.dom)
     childRemove = removeChild(@children, child)
-    unbind = coll.bind(
-      remove: (item) ->
-        if item is child.__context__
-          domRemove()
-          childRemove()
-          unbind()
-    ) unless isBlank coll
-    node.appendChild child.dom
+    unbindAndRemove = ->
+      domRemove()
+      childRemove()
+      unbind()
+    bindArg = {}
+    bindArg[event] = (item, event, previous) ->
+      if (event is 'remove' and item is child.__context__) or
+         (event is 'select' and _.last(arguments) is child.__context__)
+        unbindAndRemove()
+    unbind = coll.bind(bindArg)
 
   applyRest = (node, rest, coll) ->
     _.each rest, (arg) =>
       switch
         when isHtml(arg)
-          addChildTemplate.call(@, node, arg, coll)
+          addChildTemplate.call(@, node, arg, coll, 'remove')
         when isCollection(arg)
           applyItem = (itemFunc) =>
             (item) => applyRest.call(@, node, [itemFunc(item)], arg)
@@ -343,7 +389,15 @@
         when _.isArray(arg) and _.isArray(_.first(arg))
           applyRest.call(@, node, arg)
         when _.isArray(arg)
-          addChildNode.call(@, node, arg, coll)
+          addChildNode.call(@, node, arg)
+        when isProperty(arg) and (child = arg()) and _.isArray(child)
+          index = node.childNodes.length
+          updateFunc = (updated) =>
+            addChildTemplate.call(
+              @, node, updated, updated.__collection__, 'select', index
+            )
+          arg updateFunc
+          updateFunc(child) unless isBlank _.first(child)
         else addTextNode.call(@, node, arg)
 
   tagSplitter = /([^\s\.\#]*)(?:\#([^\s\.\#]+))?(?:\.([^\s\#]+))?/
@@ -419,6 +473,7 @@
     _.extend @,
       __type__: Template
       __context__: options.item
+      __collection__: options.collection
       dom: node
       children: children
 

@@ -138,3 +138,30 @@ test 'observes collection remove', 3, ->
     equal obj.get('firstName'), 'first'
   )
   coll.removeAt(0)
+
+test 'can selected element by index', 2, ->
+  addItem()
+  coll.selectAt(0)
+  equal coll.selectedIndex(), 0
+  deepEqual coll.selected(), coll.at(0)
+
+test 'can selected element by identity', 2, ->
+  addItem()
+  coll.selected(coll.at(1))
+  equal coll.selectedIndex(), 1
+  deepEqual coll.selected(), coll.at(1)
+
+test 'can be notified when selected element changes', 2, ->
+  coll.selected (object, index) ->
+    deepEqual object, coll.at(0)
+    equal index, 0
+  coll.selectAt(0)
+
+test 'can bind selected', 3, ->
+  addItem()
+  coll.selectAt(0)
+  coll.bind select: (object, event, previous) ->
+    deepEqual previous, coll.at(0)
+    deepEqual object, coll.at(1)
+    equal event, 'select'
+  coll.selectAt(1)

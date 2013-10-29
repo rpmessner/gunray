@@ -40,7 +40,7 @@ asyncTest 'called only once on multiple bindings', 1, ->
   p2(2)
   p3(3)
 
-test 'can computed based on collection', 1, ->
+test 'can compute based on collection', 1, ->
   coll = collection(['a','b','c','d'])
   comp = computed coll, (c) ->
     c.reduce "", (a, b) -> a + b()
@@ -59,3 +59,8 @@ asyncTest 'updates on collection change', 2, ->
     waitForSync ->
       equal comp(), 'bcde'
       start()
+
+# test 'can compute based on object', 1, ->
+#   obj = object(children: [{ first: 'Justin Townes', last: 'Earle' }], first: 'Steve', last: 'Earle')
+#   comp obj, (obj) ->
+#     obj.get('children').map
