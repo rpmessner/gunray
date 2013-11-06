@@ -97,6 +97,14 @@ test 'provides forEach function', 4, ->
     equal coll.at(i).get('firstName'), obj.get('firstName')
     index++
 
+test 'provides find function', 2, ->
+  addItem()
+  addItem(firstName: 'notit', lastName: 'last')
+  result = coll.find (x) -> x.get('lastName') is 'Patton'
+  equal result.get('firstName'), 'Charley'
+  result = coll.find (x) -> x.get('lastName') is 'last'
+  equal result.get('firstName'), 'first'
+
 test 'provides map function', 6, ->
   addItem()
   index = 0

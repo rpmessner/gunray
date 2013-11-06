@@ -1,7 +1,8 @@
-computed = Gunray.computed
+computed   = Gunray.computed
 isComputed = Gunray.isComputed
-prop = Gunray.property
+prop       = Gunray.property
 collection = Gunray.collection
+object     = Gunray.object
 
 comp = null
 
@@ -60,7 +61,16 @@ asyncTest 'updates on collection change', 2, ->
       equal comp(), 'bcde'
       start()
 
-# test 'can compute based on object', 1, ->
-#   obj = object(children: [{ first: 'Justin Townes', last: 'Earle' }], first: 'Steve', last: 'Earle')
-#   comp obj, (obj) ->
-#     obj.get('children').map
+test 'can compute based on object', 2, ->
+  obj = object(
+    first: 'Steve',
+    last: 'Earle'
+  )
+  comp = computed obj, (obj) ->
+    obj.get('first') + ' ' + obj.get('last')
+
+  equal comp(), "Steve Earle"
+
+  obj.set("last", "Martin")
+
+  equal comp(), "Steve Martin"

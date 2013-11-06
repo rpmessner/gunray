@@ -219,6 +219,14 @@
 
     reduce = (memo, func) -> _.reduce(data, func, memo)
 
+    find = (matchFunc) ->
+      ret = null
+      each (x) ->
+        return unless matchFunc(x)
+        ret = x
+        false
+      ret
+
     selectedIndex = property(-1)
     selectedItem = property()
 
@@ -249,6 +257,7 @@
       remove: removeItem
       removeAt: removeIndex
       bind: bind
+      find: find
       iterator: iterator
       trigger: trigger
       first: -> _.first(data)
@@ -485,6 +494,76 @@
   html = creator(Template)
   isHtml = isTypeFunc(Template)
 
+  #- Router ------------------------------------------------
+  path = property()
+
+  baseRoute = null
+
+  Route = ->
+    _.extend @,
+      handlers: []
+      route: Route.create
+
+  parseRouteCreateArgs = (args) ->
+    [name, handler] = args
+    last = _.last(args)
+    [coll, nested] =
+      switch
+        when args.length is 3 and isCollection last
+          [last, null]
+        when args.length is 3 and _.isFunction last
+          [null, last]
+        when args.length is 4
+          [args[2], last]
+        else [null, null]
+    [name, handler, coll, nested]
+
+  Route.create = ->
+    [name, handler, coll, nested] =
+      parseRouteCreateArgs(arguments)
+    @handlers.push
+      name: name
+      handler: handler
+      collection: coll
+      subroute: nested.apply new Route() unless isBlank nested
+    @
+
+  Router =
+    map: (func) -> baseRoute = func.apply(new Route())
+    path: -> path()
+    reset: -> baseRoute = null
+
+  History = ->
+  History.create = (options) ->
+    @location = options.location || window.location
+
+    _.extend Router, history: @
+
+    _.extend @,
+      checkUrl: ->
+        path @location.pathname.replace(/^\//,'')
+        parts = path().split('/')
+        _.reduce parts, (current, part) ->
+          return null if isBlank current
+          ret = current
+          _.each current.handlers, (handler) ->
+            if matches = handler.name.match /^:([a-zA-Z0-9]+)$/
+              field = _.last matches
+              item = handler.collection.find (x) ->
+                x.get(field) is parseInt(part) or
+                x.get(field) is part
+              return if isBlank item
+              handler.handler(part, item)
+            else
+              return unless part is handler.name
+              ret = handler.subroute
+              handler.handler(part)
+          ret
+        , baseRoute
+    @
+
+  history = creator(History)
+
   #- Export ------------------------------------------------
   _.extend Gunray,
     isProperty: isProperty
@@ -497,6 +576,10 @@
     object: object
     collection: collection
     computed: computed
+    router: Router
+    route: Route.create
+    history: history
+
   global.Gunray = Gunray
 
 )(this, _)

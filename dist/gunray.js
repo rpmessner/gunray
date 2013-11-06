@@ -1,6 +1,6 @@
 (function() {
   (function(global, _) {
-    var Collection, Computed, DEBUG, Gunray, Obj, Property, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, bindChild, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle, updateTextNode;
+    var Collection, Computed, DEBUG, Gunray, History, Obj, Property, Route, Router, Template, addChildNode, addChildTemplate, addTextNode, applyAttributes, applyRest, assert, baseRoute, bindChild, bindFunc, collection, computed, creator, debug, events, findOrCreateDom, getAttributes, hasUpstream, history, html, isAttributes, isBlank, isColl, isCollection, isComputed, isHtml, isObj, isObject, isProperty, isTag, isTypeFunc, object, parseRouteCreateArgs, path, property, removeChild, removeChildDom, splitTag, tagSplitter, toString, triggerFunc, triggerUpstream, updateAttribute, updateClassName, updateItem, updateStyle, updateTextNode;
     Gunray = {};
     toString = function(x) {
       return "" + x;
@@ -205,7 +205,7 @@
     isObj = isObject = isTypeFunc(Obj);
     Collection = function() {};
     Collection.create = function() {
-      var addItem, arg, atIndex, bind, bindings, collectionHtml, data, each, iterator, length, makeCollectionItem, map, options, reduce, removeIndex, removeItem, selectAt, selected, selectedIndex, selectedItem, trigger,
+      var addItem, arg, atIndex, bind, bindings, collectionHtml, data, each, find, iterator, length, makeCollectionItem, map, options, reduce, removeIndex, removeItem, selectAt, selected, selectedIndex, selectedItem, trigger,
         _this = this;
       arg = _.first(arguments);
       assert(_.isArray(arg), "Invalid Argument");
@@ -294,6 +294,18 @@
       reduce = function(memo, func) {
         return _.reduce(data, func, memo);
       };
+      find = function(matchFunc) {
+        var ret;
+        ret = null;
+        each(function(x) {
+          if (!matchFunc(x)) {
+            return;
+          }
+          ret = x;
+          return false;
+        });
+        return ret;
+      };
       selectedIndex = property(-1);
       selectedItem = property();
       selectedItem(function(value, previous) {
@@ -326,6 +338,7 @@
         remove: removeItem,
         removeAt: removeIndex,
         bind: bind,
+        find: find,
         iterator: iterator,
         trigger: trigger,
         first: function() {
@@ -598,6 +611,97 @@
     };
     html = creator(Template);
     isHtml = isTypeFunc(Template);
+    path = property();
+    baseRoute = null;
+    Route = function() {
+      return _.extend(this, {
+        handlers: [],
+        route: Route.create
+      });
+    };
+    parseRouteCreateArgs = function(args) {
+      var coll, handler, last, name, nested, _ref;
+      name = args[0], handler = args[1];
+      last = _.last(args);
+      _ref = (function() {
+        switch (false) {
+          case !(args.length === 3 && isCollection(last)):
+            return [last, null];
+          case !(args.length === 3 && _.isFunction(last)):
+            return [null, last];
+          case args.length !== 4:
+            return [args[2], last];
+          default:
+            return [null, null];
+        }
+      })(), coll = _ref[0], nested = _ref[1];
+      return [name, handler, coll, nested];
+    };
+    Route.create = function() {
+      var coll, handler, name, nested, _ref;
+      _ref = parseRouteCreateArgs(arguments), name = _ref[0], handler = _ref[1], coll = _ref[2], nested = _ref[3];
+      this.handlers.push({
+        name: name,
+        handler: handler,
+        collection: coll,
+        subroute: !isBlank(nested) ? nested.apply(new Route()) : void 0
+      });
+      return this;
+    };
+    Router = {
+      map: function(func) {
+        return baseRoute = func.apply(new Route());
+      },
+      path: function() {
+        return path();
+      },
+      reset: function() {
+        return baseRoute = null;
+      }
+    };
+    History = function() {};
+    History.create = function(options) {
+      this.location = options.location || window.location;
+      _.extend(Router, {
+        history: this
+      });
+      _.extend(this, {
+        checkUrl: function() {
+          var parts;
+          path(this.location.pathname.replace(/^\//, ''));
+          parts = path().split('/');
+          return _.reduce(parts, function(current, part) {
+            var ret;
+            if (isBlank(current)) {
+              return null;
+            }
+            ret = current;
+            _.each(current.handlers, function(handler) {
+              var field, item, matches;
+              if (matches = handler.name.match(/^:([a-zA-Z0-9]+)$/)) {
+                field = _.last(matches);
+                item = handler.collection.find(function(x) {
+                  return x.get(field) === parseInt(part) || x.get(field) === part;
+                });
+                if (isBlank(item)) {
+                  return;
+                }
+                return handler.handler(part, item);
+              } else {
+                if (part !== handler.name) {
+                  return;
+                }
+                ret = handler.subroute;
+                return handler.handler(part);
+              }
+            });
+            return ret;
+          }, baseRoute);
+        }
+      });
+      return this;
+    };
+    history = creator(History);
     _.extend(Gunray, {
       isProperty: isProperty,
       isObject: isObject,
@@ -608,7 +712,10 @@
       property: property,
       object: object,
       collection: collection,
-      computed: computed
+      computed: computed,
+      router: Router,
+      route: Route.create,
+      history: history
     });
     return global.Gunray = Gunray;
   })(this, _);
