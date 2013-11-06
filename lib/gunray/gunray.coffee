@@ -540,6 +540,9 @@
     _.extend Router, history: @
 
     _.extend @,
+      navigate: (url) ->
+        @location.replace url
+        @checkUrl()
       checkUrl: ->
         path @location.pathname.replace(/^\//,'')
         parts = path().split('/')

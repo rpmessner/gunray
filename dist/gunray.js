@@ -666,6 +666,10 @@
         history: this
       });
       _.extend(this, {
+        navigate: function(url) {
+          this.location.replace(url);
+          return this.checkUrl();
+        },
         checkUrl: function() {
           var parts;
           path(this.location.pathname.replace(/^\//, ''));
