@@ -1,9 +1,10 @@
-object = Gunray.object
-isObject = Gunray.isObject
+gunray = require 'gunray'
+object = gunray.object
+isObject = gunray.isObject
 
 o = null
 
-module "Gunray Object",
+QUnit.module "Gunray Object",
   setup: ->
     o = object(
       isAdmin:   false
@@ -99,3 +100,7 @@ test 'bindings provide access to current, previous values and the object', 4, ->
 
 test 'gets collection values', ->
   equal o.get('children.at(0).name'), 'dorothy'
+
+test 'sets collection values', ->
+  o.set('children.at(0).name', 'toto')
+  equal o.get("children.at(0).name"), 'toto'

@@ -4,15 +4,21 @@
   "author": "<rpmessner@gmail.com>",
   "version": "0.0.1",
   "dependencies": {
-    "lodash": "2.2.1"
+    "lodash": "latest"
   },
   "devDependencies": {
-    "grunt": "~0.4.1",
-    "grunt-coffeelint": "~0.0.7",
-    "grunt-contrib-coffee": "~0.7.0",
-    "grunt-contrib-qunit": "~0.3.0",
-    "grunt-contrib-uglify": "~0.2.4",
-    "grunt-contrib-watch": "~0.5.3"
+    "grunt": "latest",
+    "simulate": "latest",
+    "sinon": "latest",
+    "coffeeify-redux": "latest",
+    "coffee-trace": "latest",
+    "grunt-exorcise": "latest",
+    "grunt-coffeelint": "latest",
+    "grunt-browserify": "latest",
+    "grunt-croc-qunit": "latest",
+    "grunt-contrib-qunit": "latest",
+    "grunt-contrib-uglify": "latest",
+    "grunt-contrib-watch": "latest"
   },
   "engine":"node >= 0.10.21"
 }

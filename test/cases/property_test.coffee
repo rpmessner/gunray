@@ -1,15 +1,17 @@
-prop = Gunray.property
-isProperty = Gunray.isProperty
+_ = require 'lodash'
+gunray = require 'gunray'
+prop = gunray.property
+isProperty = gunray.isProperty
 
 updated = r1 = r2 = r3 = p = p2 = null
 
-module "Gunray Property",
-   setup: ->
-     updated = 0
-     p = prop()
-     p2 = prop()
-     [r1, r2]  = _.times 2, Math.random
-   teardown: ->
+QUnit.module "Gunray Property",
+  setup: ->
+    updated = 0
+    p = prop()
+    p2 = prop()
+    [r1, r2]  = _.times 2, Math.random
+  teardown: ->
 
 test 'is created', 2, ->
   equal isProperty(p), true

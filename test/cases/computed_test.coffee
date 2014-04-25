@@ -1,12 +1,14 @@
-computed   = Gunray.computed
-isComputed = Gunray.isComputed
-prop       = Gunray.property
-collection = Gunray.collection
-object     = Gunray.object
+gunray = require 'gunray'
+
+computed   = gunray.computed
+isComputed = gunray.isComputed
+prop       = gunray.property
+collection = gunray.collection
+object     = gunray.object
 
 comp = null
 
-module "Gunray Computed",
+QUnit.module "Gunray Computed",
   setup: ->
   teardown: ->
 

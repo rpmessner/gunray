@@ -1,8 +1,9 @@
-collection = Gunray.collection
-isCollection = Gunray.isCollection
+gunray = require('gunray')
+collection = gunray.collection
+isCollection = gunray.isCollection
 coll = null
 
-module "Gunray Collection",
+QUnit.module "Gunray Collection",
   setup: ->
     coll = collection([
       firstName: 'first'

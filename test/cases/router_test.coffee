@@ -1,28 +1,18 @@
-route = Gunray.route
-router = Gunray.router
-property = Gunray.property
-observable = Gunray.observable
-collection = Gunray.collection
-history = Gunray.history
+gunray = require 'gunray'
+h = require '../helpers.coffee'
+route = gunray.route
+router = gunray.router
+property = gunray.property
+observable = gunray.observable
+collection = gunray.collection
+history = gunray.history
 
 hist = location = null
 
-LocationDouble = (href) ->
-  @replace(href)
-
-_.extend LocationDouble.prototype,
-  parser: document.createElement('a')
-  toString: -> @href
-  replace: (href) ->
-    @parser.href = href
-    _.extend @, _.pick @parser,
-      'href', 'hash', 'host', 'search', 'fragment', 'pathname', 'protocol'
-    @pathname = "/#{@pathname}" unless /^\//.test @pathname
-
-module "Gunray Router",
+QUnit.module "Gunray Router",
   setup:  ->
-    location = new LocationDouble('http://www.example.com')
-    hist = history(location: location)
+    location = new h.Location('http://www.example.com')
+    hist = history(location: location, pushState: ->)
 
   teardown: ->
     lastRoute = lastArgs = null
@@ -75,30 +65,51 @@ test "collection route", 8, ->
     equal name, 'Dan'
     equal item, coll.last()
 
-  coll = collection([{id: 1, name: 'Betty', category: 'Foo'},
-                     {id: 2, name: 'Dan',   category: 'Foo'}])
+  coll = collection([
+    {id: 1, name: 'Betty', category: 'Foo'},
+    {id: 2, name: 'Dan',   category: 'Foo'}
+  ])
+
   router.map ->
     @route 'person', person, ->
       @route ':id', collIdRoute, coll
       @route ':name', collNameRoute, coll
 
-  location.replace 'http://example.com/person/1'
+  location.replace 'http://www.example.com/person/1'
 
   hist.checkUrl()
 
   equal router.path(), 'person/1'
 
-  location.replace 'http://example.com/person/Dan'
+  location.replace 'http://www.example.com/person/Dan'
 
   hist.checkUrl()
 
   equal router.path(), 'person/Dan'
 
-test "history#navigate", 2, ->
+test "history#navigate does nothing if not started", 1, ->
+  location.replace 'http://www.example.com/foo'
+  hist.navigate '/page'
+  equal location.href, 'http://www.example.com/foo'
+
+test "history#navigate without pushState", 3, ->
   page = (route) -> equal route, 'page'
 
   router.map -> @route 'page', page
 
-  hist.navigate 'http://example.com/page'
+  hist.start()
+  hist.navigate '/page'
 
+  equal location.href, 'http://www.example.com/page'
   equal router.path(), 'page'
+
+test "history#navigate with pushState", 2, ->
+  pushState = (state, title, path) ->
+    equal title, document.title
+    equal path, '/foobar'
+
+  hist = history(location: location, pushState: pushState)
+
+  hist.start(pushState: true)
+
+  hist.navigate "/foobar"
